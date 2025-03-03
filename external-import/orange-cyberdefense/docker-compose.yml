@@ -11,6 +11,7 @@ services:
       - CONNECTOR_CONFIDENCE_LEVEL=100 # From 0 (Unknown) to 100 (Fully trusted)
       - CONNECTOR_UPDATE_EXISTING_DATA=false
       - CONNECTOR_LOG_LEVEL=error
+      - OCD_DATALAKE_ENV=prod
       - OCD_DATALAKE_TOKEN=ChangeME
       - OCD_DATALAKE_ZIP_FILE_PATH=/opt/opencti-connector-orange-cyberdefense
       - OCD_IMPORT_WORLDWATCH=true

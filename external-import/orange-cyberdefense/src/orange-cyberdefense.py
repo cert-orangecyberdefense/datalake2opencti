@@ -48,22 +48,15 @@ def strip_tags(html: str):
 
 
 atom_types_mapping = {
-    "apk": "Unknown",
     "as": "Autonomous-System",
-    "cc": "Payment-Card",
+    "certificate": "X509-Certificate",
     "crypto": "Cryptocurrency-Wallet",
-    "cve": "Unknown",
     "domain": "Domain-Name",
     "email": "Email-Addr",
     "file": "StixFile",
-    "fqdn": "Hostname",
-    "iban": "Bank-Account",
     "ip": "IPv4-Addr",
     "ip_range": "IPv4-Addr",
-    "paste": "Text",
     "phone_number": "Phone-Number",
-    "regkey": "Windows-Registry-Key",
-    "ssl": "X509-Certificate",
     "url": "Url",
 }
 
@@ -219,9 +212,10 @@ class OrangeCyberDefense:
             if os.path.isfile(config_file_path)
             else {}
         )
-        self.helper = OpenCTIConnectorHelper(config)
-        self.ocd_datalake_api_url = (
-            "https://datalake.cert.orangecyberdefense.com/api/v2"
+        self.helper = OpenCTIConnectorHelper(config) # Set config, then overwrite some with env variables
+        
+        self.ocd_datalake_env = get_config_variable(
+            "OCD_DATALAKE_ENV", ["ocd", "datalake_env"], config
         )
         self.ocd_datalake_token = get_config_variable(
             "OCD_DATALAKE_TOKEN", ["ocd", "datalake_token"], config
@@ -304,7 +298,7 @@ class OrangeCyberDefense:
             x_opencti_order=99,
             x_opencti_color="#ff7900",
         )
-        self.datalake_instance = Datalake(longterm_token=self.ocd_datalake_token)
+        self.datalake_instance = Datalake(longterm_token=self.ocd_datalake_token, env=self.ocd_datalake_env)
         self.cache = {}
 
     def _generate_indicator_note(self, indicator_object):
@@ -365,7 +359,7 @@ class OrangeCyberDefense:
             for external_reference in object["external_references"]:
                 if "url" in external_reference:
                     external_reference["url"] = external_reference["url"].replace(
-                        "api/v2/mrti/threats", "gui/threat"
+                        "api/v3/mrti/threats", "gui/threat"
                     )
                     external_references.append(external_reference)
                 else:
@@ -460,21 +454,7 @@ class OrangeCyberDefense:
 
         for tag in tags:
             try:
-                url = "https://datalake.cert.orangecyberdefense.com/api/v2/mrti/tag-subcategory/filtered/"
-                payload = json.dumps(
-                    {
-                        "limit": "5000",
-                        "offset": "0",
-                        "tag": tag,
-                    }
-                )
-                headers = {
-                    "Accept": "application/stix+json",
-                    "Content-Type": "application/json",
-                    "Authorization": "Token " + self.ocd_datalake_token,
-                }
-                response = requests.post(url, headers=headers, data=payload)
-                data = response.json()
+                data = self.datalake_instance.FilteredThreatEntity.get_filtered_and_sorted_list(limit=5000,offset=0,tag=tag,output=Output.STIX)
             except Exception as e:
                 self.helper.log_error(
                     "This tag cannot be found in Datalake: " + tag + "\n" + str(e)
@@ -855,17 +835,7 @@ class OrangeCyberDefense:
 
     def _import_threat_library(self):
         current_state = self.helper.get_state()
-
-        url = "https://datalake.cert.orangecyberdefense.com/api/v2/mrti/tag-subcategory/filtered/"
-        payload = json.dumps({"limit": "500", "offset": "0", "ordering": "-updated_at"})
-        headers = {
-            "Accept": "application/stix+json",
-            "Content-Type": "application/json",
-            "Authorization": "Token " + self.ocd_datalake_token,
-        }
-        threat_stix_bundle = requests.request(
-            "POST", url, headers=headers, data=payload
-        ).json()
+        threat_stix_bundle = self.datalake_instance.FilteredThreatEntity.get_filtered_and_sorted_list(limit=500,offset=0,ordering="-updated_at", output=Output.STIX)
         if threat_stix_bundle["objects"]:
             self._log_and_initiate_work("Threat Library")
             threat_stix_bundle["objects"] = [
@@ -964,6 +934,12 @@ class OrangeCyberDefense:
                         )
                 if self.ocd_import_datalake:
                     try:
+                        self.helper.log_info(f"importing worldwatch,  : "
+                             f"self.ocd_import_worldwatch={self.ocd_import_worldwatch}"
+                             f"self.ocd_datalake_env={self.ocd_datalake_env}"
+                             f"self.ocd_import_threat_library={self.ocd_import_threat_library}"
+                             f"self.ocd_import_datalake={self.ocd_import_datalake}"
+                             )
                         self._import_datalake()
                     except Exception as ex:
                         self.helper.log_error(
