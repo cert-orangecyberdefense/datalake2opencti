@@ -224,9 +224,7 @@ class OrangeCyberDefense:
             "https://datalake.cert.orangecyberdefense.com/api/v2"
         )
         self.ocd_datalake_token = get_config_variable(
-            "OCD_DATALAKE_TOKEN",
-            ["ocd", "datalake_token"],
-            config
+            "OCD_DATALAKE_TOKEN", ["ocd", "datalake_token"], config
         )
         self.ocd_datalake_zip_file_path = get_config_variable(
             "OCD_DATALAKE_ZIP_FILE_PATH",
@@ -240,10 +238,7 @@ class OrangeCyberDefense:
             config,
         )
         self.ocd_import_worldwatch = get_config_variable(
-            "OCD_IMPORT_WORLDWATCH",
-            ["ocd", "import_worldwatch"],
-            config,
-            default=True
+            "OCD_IMPORT_WORLDWATCH", ["ocd", "import_worldwatch"], config, default=True
         )
         self.ocd_import_worldwatch_start_date = get_config_variable(
             "OCD_IMPORT_WORLDWATCH_START_DATE",
@@ -257,10 +252,7 @@ class OrangeCyberDefense:
             default=True,
         )
         self.ocd_import_datalake = get_config_variable(
-            "OCD_IMPORT_DATALAKE",
-            ["ocd", "import_datalake"],
-            config,
-            default=True
+            "OCD_IMPORT_DATALAKE", ["ocd", "import_datalake"], config, default=True
         )
         self.ocd_datalake_queries = json.loads(
             get_config_variable(
@@ -276,17 +268,10 @@ class OrangeCyberDefense:
             default=True,
         )
         self.ocd_curate_labels = get_config_variable(
-            "OCD_CURATE_LABELS",
-            ["ocd", "curate_labels"],
-            config,
-            default=True
+            "OCD_CURATE_LABELS", ["ocd", "curate_labels"], config, default=True
         )
         self.ocd_interval = get_config_variable(
-            "OCD_INTERVAL",
-            ["ocd", "interval"],
-            config,
-            isNumber=True,
-            default=15
+            "OCD_INTERVAL", ["ocd", "interval"], config, isNumber=True, default=15
         )
         self.ocd_threat_actor_as_intrusion_set = get_config_variable(
             "OCD_THREAT_ACTOR_AS_INTRUSION_SET",
