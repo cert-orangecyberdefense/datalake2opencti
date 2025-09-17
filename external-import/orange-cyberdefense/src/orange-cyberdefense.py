@@ -224,7 +224,9 @@ class OrangeCyberDefense:
             "https://datalake.cert.orangecyberdefense.com/api/v2"
         )
         self.ocd_datalake_token = get_config_variable(
-            "OCD_DATALAKE_TOKEN", ["ocd", "datalake_token"], config
+            "OCD_DATALAKE_TOKEN",
+            ["ocd", "datalake_token"],
+            config
         )
         self.ocd_datalake_zip_file_path = get_config_variable(
             "OCD_DATALAKE_ZIP_FILE_PATH",
@@ -238,7 +240,10 @@ class OrangeCyberDefense:
             config,
         )
         self.ocd_import_worldwatch = get_config_variable(
-            "OCD_IMPORT_WORLDWATCH", ["ocd", "import_worldwatch"], config, default=True
+            "OCD_IMPORT_WORLDWATCH",
+            ["ocd", "import_worldwatch"],
+            config,
+            default=True
         )
         self.ocd_import_worldwatch_start_date = get_config_variable(
             "OCD_IMPORT_WORLDWATCH_START_DATE",
@@ -252,7 +257,10 @@ class OrangeCyberDefense:
             default=True,
         )
         self.ocd_import_datalake = get_config_variable(
-            "OCD_IMPORT_DATALAKE", ["ocd", "import_datalake"], config, default=True
+            "OCD_IMPORT_DATALAKE",
+            ["ocd", "import_datalake"],
+            config,
+            default=True
         )
         self.ocd_datalake_queries = json.loads(
             get_config_variable(
@@ -268,10 +276,17 @@ class OrangeCyberDefense:
             default=True,
         )
         self.ocd_curate_labels = get_config_variable(
-            "OCD_CURATE_LABELS", ["ocd", "curate_labels"], config, default=True
+            "OCD_CURATE_LABELS",
+            ["ocd", "curate_labels"],
+            config,
+            default=True
         )
         self.ocd_interval = get_config_variable(
-            "OCD_INTERVAL", ["ocd", "interval"], config, isNumber=True, default=15
+            "OCD_INTERVAL",
+            ["ocd", "interval"],
+            config,
+            isNumber=True,
+            default=15
         )
         self.ocd_threat_actor_as_intrusion_set = get_config_variable(
             "OCD_THREAT_ACTOR_AS_INTRUSION_SET",
@@ -304,7 +319,8 @@ class OrangeCyberDefense:
             x_opencti_order=99,
             x_opencti_color="#ff7900",
         )
-        self.datalake_instance = Datalake(longterm_token=self.ocd_datalake_token)
+        if self.ocd_import_datalake or self.ocd_import_threat_library:
+            self.datalake_instance = Datalake(longterm_token=self.ocd_datalake_token)
         self.cache = {}
 
     def _generate_indicator_note(self, indicator_object):
@@ -608,15 +624,19 @@ class OrangeCyberDefense:
         # Getting the iocs object from the report
         self.helper.log_info("Getting iocs from Datalake...")
         if report["datalake_url"]:
-            hashkey = extract_datalake_query_hash(report["datalake_url"]["url"])
-            if hashkey:
-                report_iocs = self._get_report_iocs(
-                    datalake_query_hash=hashkey,
-                )
+            if self.ocd_import_datalake or self.ocd_import_threat_library:
+                hashkey = extract_datalake_query_hash(report["datalake_url"]["url"])
+                if hashkey:
+                    report_iocs = self._get_report_iocs(
+                        datalake_query_hash=hashkey,
+                    )
+                else:
+                    self.helper.log_info(
+                        f"No hashkey found in datalake url: {report['datalake_url']['url']}"
+                    )
+                    report_iocs = []
             else:
-                self.helper.log_info(
-                    f"No hashkey found in datalake url: {report['datalake_url']['url']}"
-                )
+                self.helper.log_info("Skipping because datalake is not configured")
                 report_iocs = []
         else:
             self.helper.log_info("No datalake url found")
@@ -626,7 +646,7 @@ class OrangeCyberDefense:
         # Getting the report entities
         self.helper.log_info("Getting report entities...")
         tags = set(report["tags"]) | set(report["advisory_tags"])
-        if tags:
+        if (self.ocd_import_datalake or self.ocd_import_threat_library) and tags:
             report_entities = self._get_report_entities(tags)
         else:
             report_entities = []
