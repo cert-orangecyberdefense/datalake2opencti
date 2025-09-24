@@ -1,0 +1,22 @@
+opencti:
+  url: 'http://localhost:8080'
+  token: 'ChangeMe'
+
+connector:
+  name: "Orange Cyberdefense CTI Enrichment"
+  id: "ChangeMe"
+  scope: "IPv4-Addr,IPv6-Addr,Domain-Name,URL,Email-Addr"
+  type: "INTERNAL_ENRICHMENT"
+  auto: true
+  log_level: "info"
+
+
+ocd:
+  ocd_enrich_datalake_token: "ChangeMe"
+  ocd_datalake_env: "ChangeMe"
+  ocd_enrich_add_labels: true
+  ocd_enrich_add_score: true
+  ocd_enrich_add_extref: true
+  ocd_enrich_add_summary: true
+  ocd_enrich_add_related: true
+  ocd_enrich_max_tlp: "TLP:AMBER"
