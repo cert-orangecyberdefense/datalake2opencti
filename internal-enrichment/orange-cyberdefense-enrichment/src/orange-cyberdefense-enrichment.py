@@ -117,6 +117,29 @@ def get_atom_type(observable_type: str):
     return mapping.get(observable_type, None)
 
 
+def validate_scope(value: str) -> str:
+    available_values = {
+        "ipv4-addr": "IPv4-Addr",
+        "ipv6-addr": "IPv6-Addr",
+        "url": "URL",
+        "email-addr": "Email-Addr",
+        "phone-number": "Phone-Number",
+        "x509-certificate": "X509-Certificate",
+        "cryptocurrency-wallet": "Cryptocurrency-Wallet",
+        "autonomous-system": "Autonomous-System",
+        "domain-name": "Domain-Name",
+        "stixfile": "StixFile",
+    }
+    scope_splitted = [scope.strip().lower() for scope in value.split(",")]
+    valid_scope = [available_values[scope] for scope in scope_splitted if scope in available_values]
+
+    if not valid_scope:
+        raise ValueError(f"No valid scopes found. Allowed values are: {available_values}.")
+    scope_string = ",".join(valid_scope)
+
+    return scope_string
+
+
 class OrangeCyberdefenseEnrichment:
     def __init__(self):
         config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yml")
@@ -126,48 +149,69 @@ class OrangeCyberdefenseEnrichment:
             else {}
         )
 
+        defaults = {
+            "connector": {
+                "name": "Orange Cyberdefense CTI Enrichment",
+                "scope": "IPv4-Addr,IPv6-Addr,Domain-Name,URL,Email-Addr,Autonomous-System,X509-Certificate,Cryptocurrency-Wallet,StixFile,Phone-Number",
+                "type": "INTERNAL_ENRICHMENT",
+                "auto": True,
+                "log_level": "info",
+            }
+        }
+
+        config["connector"] = {**defaults["connector"], **config.get("connector", {})}
+
+        config["connector"]["scope"] = validate_scope(config["connector"]["scope"])
+
         self.helper = OpenCTIConnectorHelper(config)
 
         self.ocd_enrich_datalake_token = get_config_variable(
-            "OCD_ENRICH_DATALAKE_TOKEN", ["ocd", "ocd_enrich_datalake_token"], config
+            "OCD_ENRICH_DATALAKE_TOKEN", ["ocd_enrich", "datalake_token"], config
         )
 
         self.ocd_enrich_datalake_env = get_config_variable(
-            "OCD_ENRICH_DATALAKE_ENV", ["ocd", "ocd_enrich_datalake_env"], config
+            "OCD_ENRICH_DATALAKE_ENV", ["ocd_enrich", "datalake_env"], config, default="prod"
         )
 
         self.ocd_enrich_add_tags_as_labels = get_config_variable(
-            "OCD_ENRICH_ADD_TAGS_AS_LABELS", ["ocd", "ocd_enrich_add_tags_as_labels"], config
+            "OCD_ENRICH_ADD_TAGS_AS_LABELS",
+            ["ocd_enrich", "add_tags_as_labels"],
+            config,
+            default=True,
         )
 
         self.ocd_enrich_add_scores_as_labels = get_config_variable(
-            "OCD_ENRICH_ADD_SCORES_AS_LABELS", ["ocd", "ocd_enrich_add_scores_as_labels"], config
+            "OCD_ENRICH_ADD_SCORES_AS_LABELS",
+            ["ocd_enrich", "add_scores_as_labels"],
+            config,
+            default=True,
         )
 
         self.ocd_enrich_threat_actor_as_intrusion_set = get_config_variable(
             "OCD_ENRICH_THREAT_ACTOR_AS_INTRUSION_SET",
-            ["ocd", "ocd_enrich_threat_actor_as_intrusion_set"],
+            ["ocd_enrich", "threat_actor_as_intrusion_set"],
             config,
+            default=True,
         )
 
         self.ocd_enrich_add_score = get_config_variable(
-            "OCD_ENRICH_ADD_SCORE", ["ocd", "ocd_enrich_add_score"], config
+            "OCD_ENRICH_ADD_SCORE", ["ocd_enrich", "add_score"], config, default=True
         )
 
         self.ocd_enrich_add_extref = get_config_variable(
-            "OCD_ENRICH_ADD_EXTREF", ["ocd", "ocd_enrich_add_extref"], config
+            "OCD_ENRICH_ADD_EXTREF", ["ocd_enrich", "add_extref"], config, default=True
         )
 
         self.ocd_enrich_add_summary = get_config_variable(
-            "OCD_ENRICH_ADD_SUMMARY", ["ocd", "ocd_enrich_add_summary"], config
+            "OCD_ENRICH_ADD_SUMMARY", ["ocd_enrich", "add_summary"], config, default=True
         )
 
         self.ocd_enrich_add_related = get_config_variable(
-            "OCD_ENRICH_ADD_RELATED", ["ocd", "ocd_enrich_add_related"], config
+            "OCD_ENRICH_ADD_RELATED", ["ocd_enrich", "add_related"], config, default=True
         )
 
         self.max_tlp = get_config_variable(
-            "OCD_ENRICH_MAX_TLP", ["ocd", "ocd_enrich_max_tlp"], config
+            "OCD_ENRICH_MAX_TLP", ["ocd_enrich", "max_tlp"], config, default="TLP:AMBER"
         )
 
         self.identity = self.helper.api.identity.create(
@@ -341,6 +385,9 @@ class OrangeCyberdefenseEnrichment:
             for external_reference in indicator_object.get("external_references", []):
                 if "url" in external_reference:
                     try:
+                        external_reference["url"] = external_reference["url"].replace(
+                            "api/v3/mrti/threats", "gui/threat"
+                        )
                         ext_ref = self.helper.api.external_reference.create(
                             source_name=external_reference.get(
                                 "source_name", "Orange Cyberdefense"
