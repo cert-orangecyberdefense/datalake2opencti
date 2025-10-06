@@ -153,8 +153,7 @@ class OrangeCyberdefenseEnrichment:
             "connector": {
                 "name": "Orange Cyberdefense CTI Enrichment",
                 "scope": "IPv4-Addr,IPv6-Addr,Domain-Name,URL,Email-Addr,Autonomous-System,X509-Certificate,Cryptocurrency-Wallet,StixFile,Phone-Number",
-                "type": "INTERNAL_ENRICHMENT",
-                "auto": True,
+                "auto": False,
                 "log_level": "info",
             }
         }
@@ -162,6 +161,7 @@ class OrangeCyberdefenseEnrichment:
         config["connector"] = {**defaults["connector"], **config.get("connector", {})}
 
         config["connector"]["scope"] = validate_scope(config["connector"]["scope"])
+        config["connector"]["type"] = "INTERNAL_ENRICHMENT"
 
         self.helper = OpenCTIConnectorHelper(config)
 
@@ -345,7 +345,7 @@ class OrangeCyberdefenseEnrichment:
             related_objects.append(self._process_object(object))
 
         labels = []
-        max_score = 0
+        max_score = -1
 
         threat_scores = indicator_object.get("x_datalake_score", {})
         for threat_type, score in threat_scores.items():
@@ -355,7 +355,7 @@ class OrangeCyberdefenseEnrichment:
             if score > max_score:
                 max_score = score
 
-        if self.ocd_enrich_add_score:
+        if self.ocd_enrich_add_score and max_score != -1:
             OpenCTIStix2.put_attribute_in_extension(
                 stix_entity, STIX_EXT_OCTI_SCO, "score", max_score
             )

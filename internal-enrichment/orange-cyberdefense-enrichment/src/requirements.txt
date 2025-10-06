@@ -1,3 +1,4 @@
-pycti==6.7.17
+pycti==6.8.2
 datalake-scripts==3.0.0rc2
 stix2==3.0.1
+PyYAML==6.0.3
