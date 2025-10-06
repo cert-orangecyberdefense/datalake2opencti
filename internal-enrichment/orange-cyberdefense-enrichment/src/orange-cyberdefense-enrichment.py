@@ -450,16 +450,15 @@ class OrangeCyberdefenseEnrichment:
 
         if self.ocd_enrich_add_related:
             stix_objects.extend(related_objects)
-
-        relationship = stix2.Relationship(
-            relationship_type="based-on",
-            source_ref=indicator_object["id"],
-            target_ref=stix_entity["id"],
-            confidence=self.helper.connect_confidence_level,
-            created_by_ref=self.identity["standard_id"],
-            object_marking_refs=[self.marking["standard_id"]],
-        )
-        stix_objects.append(json.loads(relationship.serialize()))
+            relationship = stix2.Relationship(
+                relationship_type="based-on",
+                source_ref=indicator_object["id"],
+                target_ref=stix_entity["id"],
+                confidence=self.helper.connect_confidence_level,
+                created_by_ref=self.identity["standard_id"],
+                object_marking_refs=[self.marking["standard_id"]],
+            )
+            stix_objects.append(json.loads(relationship.serialize()))
 
         serialized_bundle = self.helper.stix2_create_bundle(stix_objects)
         self.helper.send_stix2_bundle(serialized_bundle)
