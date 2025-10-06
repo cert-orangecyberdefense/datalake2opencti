@@ -1,0 +1,10 @@
+services:
+  connector-orange-cyberdefense-enrichment:
+    image: opencti/connector-orange-cyberdefense-enrichment:rolling
+    environment:
+      - OPENCTI_URL=http://opencti:8080
+      - OPENCTI_TOKEN=ChangeMe
+      - CONNECTOR_ID=ChangeMe
+      - CONNECTOR_AUTO=false
+      - OCD_ENRICH_DATALAKE_TOKEN=ChangeMe
+    restart: always
