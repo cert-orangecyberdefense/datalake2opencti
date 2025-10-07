@@ -40,7 +40,7 @@ Other prerequisites for using this connector includes:
 
 1. Copy the content under the `services:` section of the `docker-compose.yml` example file into your main OpenCTI docker configuration.
 2. Replace the value of `CONNECTOR_ID` with a randomly generated UUIDv4 (you can find UUID generators online).
-3. Replace the value of `CONNECTOR_AUTO` with `true` if you want enrichment to trigger on new observables creation (defaults `false` which means manual enrichment only).
+3. Replace the value of `CONNECTOR_AUTO` with `true` if you want enrichment to trigger on new observables creation (defaults to `false` which means manual enrichment only).
 4. Replace the value of `OCD_ENRICH_DATALAKE_TOKEN` with your Datalake API token.
 5. Replace or add other variables to customize the behavior of this connector according to your needs. See [this section below](#environment-variables) for a full list of supported environment variable.
 6. Reload the connector's container configuration. If using Docker compose, this can be done using the `docker compose up -d` command.
@@ -67,7 +67,7 @@ Other prerequisites for using this connector includes:
 |--------------------------------------------|--------------------------------------------|-----------|-------------|
 | `opencti.url`                              | `OPENCTI_URL`                              | Yes       | The OpenCTI platform URL. |
 | `opencti.token`                            | `OPENCTI_TOKEN`                            | Yes       | The OpenCTI API token of the user who represents the connector in the OpenCTI platform. |
-| `connector.id`                             | `CONNECTOR_ID`                             | No        | A unique UUIDv4 identifier for this connector instance. |
+| `connector.id`                             | `CONNECTOR_ID`                             | Yes        | A unique UUIDv4 identifier for this connector instance. |
 | `connector.auto`                           | `CONNECTOR_AUTO`                           | Yes       | Whether to automatically enrich every newly created observable. Defaults to `false`. |
 | `connector.name`                           | `CONNECTOR_NAME`                           | No        | Name of the connector. Defaults to `Orange Cyberdefense CTI Enrichment`. |
 | `connector.scope`                          | `CONNECTOR_SCOPE`                          | No        | OpenCTI observable types for which to enable the enrichment. Defaults to all supported types: `IPv4-Addr,IPv6-Addr,Domain-Name,URL,Email-Addr,Autonomous-System,X509-Certificate,Cryptocurrency-Wallet,StixFile,Phone-Number`. |
