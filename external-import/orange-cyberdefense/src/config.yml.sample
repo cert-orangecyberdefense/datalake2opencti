@@ -15,6 +15,9 @@ connector:
 ocd:
   datalake_token: 'ChangeMe'
   datalake_zip_file_path: '/opt/opencti-connector-orange-cyberdefense'
+  ignore_unscored_indicators: true
+  ignore_whitelisted_indicators: true
+  fallback_score: 0
   import_worldwatch: true
   import_worldwatch_start_date: '2022-01-01'
   import_worldwatch_api_key: 'ChangeMe'
