@@ -800,7 +800,7 @@ class OrangeCyberDefense:
                         scores = list(object["x_datalake_score"].values())
                         if len(scores) == 0 and self.ocd_ignore_unscored_indicators:
                             continue
-                        elif len(scores) == 0 and self.ocd_fallback_score:
+                        elif len(scores) == 0:
                             processed_object["x_opencti_score"] = self.ocd_fallback_score
 
                     if not "labels" in processed_object:
