@@ -434,10 +434,21 @@ class OrangeCyberDefense:
             # Parse the result
             for object in data["objects"]:
                 processed_object = self._process_object(object)
-                objects.append(processed_object)
                 if processed_object["type"] == "indicator":
+                    if (
+                        processed_object["x_opencti_score"] == 0
+                        and self.ocd_ignore_whitelisted_indicators
+                    ):
+                        continue
+                    if "x_datalake_score" in processed_object:
+                        scores = list(object["x_datalake_score"].values())
+                        if len(scores) == 0 and self.ocd_ignore_unscored_indicators:
+                            continue
+                        elif len(scores) == 0:
+                            processed_object["x_opencti_score"] = self.ocd_fallback_score
                     stix2_note = self._generate_indicator_note(processed_object)
                     objects.append(stix2_note)
+                objects.append(processed_object)
             offset += limit
 
         # we remove duplicates, after processing because processing may affect id
