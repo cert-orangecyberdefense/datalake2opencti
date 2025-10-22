@@ -15,9 +15,6 @@ connector:
 ocd:
   datalake_token: 'ChangeMe'
   datalake_zip_file_path: '/opt/opencti-connector-orange-cyberdefense'
-  ignore_unscored_indicators: true
-  ignore_whitelisted_indicators: true
-  fallback_score: 0
   import_worldwatch: true
   import_worldwatch_start_date: '2022-01-01'
   import_worldwatch_api_key: 'ChangeMe'
@@ -29,3 +26,6 @@ ocd:
   threat_actor_as_intrusion_set: true
   interval: 30 # Required, in minutes. Minimum recommended 30
   reset_state: false # force the use of the start_dates from the config instead of getting the state saved in opencti
+  ignore_unscored_indicators: true
+  ignore_whitelisted_indicators: true
+  fallback_score: 0
