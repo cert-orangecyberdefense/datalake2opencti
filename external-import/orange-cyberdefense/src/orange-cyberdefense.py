@@ -9,7 +9,6 @@ from html.parser import HTMLParser
 from io import StringIO
 from typing import Iterable, TypeVar
 from concurrent.futures import ThreadPoolExecutor
-import threading
 
 import html2text
 import requests
@@ -221,6 +220,9 @@ class OrangeCyberDefense:
         self.ocd_datalake_env = get_config_variable(
             "OCD_DATALAKE_ENV", ["ocd", "datalake_env"], config
         )
+        if not self.ocd_datalake_env:
+            raise ValueError("Parameter 'datalake_env' is missing.")
+
         self.ocd_datalake_token = get_config_variable(
             "OCD_DATALAKE_TOKEN", ["ocd", "datalake_token"], config
         )
@@ -270,15 +272,17 @@ class OrangeCyberDefense:
             "OCD_WORLDWATCH_API_KEY",
             ["ocd", "worldwatch_api_key"],
             config,
-            default=None,
         )
         if self.ocd_worldwatch_api_key is None:
             self.ocd_worldwatch_api_key = get_config_variable(
                 "OCD_IMPORT_WORLDWATCH_API_KEY", ["ocd", "import_worldwatch_api_key"], config
             )
-            self.helper.log_info(
-                "Parameter 'import_worldwatch_api_key' has been deprecated. Please use 'worldwatch_api_key' instead."
-            )
+            if self.ocd_worldwatch_api_key:
+                self.helper.log_warning(
+                    "Parameter 'import_worldwatch_api_key' has been deprecated. Please use 'worldwatch_api_key' instead."
+                )
+            else:
+                raise ValueError("Parameter 'worldwatch_api_key' is missing.")
 
         self.ocd_import_worldwatch = get_config_variable(
             "OCD_IMPORT_WORLDWATCH", ["ocd", "import_worldwatch"], config, default=True
@@ -287,18 +291,19 @@ class OrangeCyberDefense:
             "OCD_WORLDWATCH_START_DATE",
             ["ocd", "worldwatch_start_date"],
             config,
-            default=None,
         )
         if self.ocd_worldwatch_start_date is None:
             self.ocd_worldwatch_start_date = get_config_variable(
                 "OCD_IMPORT_WORLDWATCH_START_DATE",
                 ["ocd", "import_worldwatch_start_date"],
                 config,
-                default="2022-01-01",
             )
-            self.helper.log_info(
-                "Parameter 'import_worldwatch_start_date' has been deprecated. Please use 'worldwatch_start_date' instead."
-            )
+            if self.ocd_worldwatch_start_date:
+                self.helper.log_warning(
+                    "Parameter 'import_worldwatch_start_date' has been deprecated. Please use 'worldwatch_start_date' instead."
+                )
+            else:
+                self.ocd_worldwatch_start_date = "2022-01-01"
 
         self.ocd_import_threat_library = get_config_variable(
             "OCD_IMPORT_THREAT_LIBRARY",
@@ -320,25 +325,29 @@ class OrangeCyberDefense:
             "OCD_DATALAKE_CREATE_OBSERVABLES",
             ["ocd", "datalake_create_observables"],
             config,
-            default=None,
         )
         if self.ocd_datalake_create_observables is None:
             self.ocd_datalake_create_observables = get_config_variable(
                 "OCD_CREATE_OBSERVABLES",
                 ["ocd", "create_observables"],
                 config,
-                default=True,
             )
-            self.helper.log_info(
-                "Parameter 'create_observables' has been deprecated. Please use 'datalake_create_observables' instead."
-            )
+            if self.ocd_datalake_create_observables is not None:
+                self.helper.log_warning(
+                    "Parameter 'create_observables' has been deprecated. Please use 'datalake_create_observables' instead."
+                )
+            else:
+                self.ocd_datalake_create_observables = True
 
         self.ocd_curate_labels = get_config_variable(
-            "OCD_CURATE_LABELS", ["ocd", "curate_labels"], config, default=True
+            "OCD_CURATE_LABELS", ["ocd", "curate_labels"], config
         )
-        self.helper.log_info(
-            "Parameter 'curate_labels' has been deprecated. Please read the README.md file for up-to-date documentation"
-        )
+        if self.ocd_curate_labels is not None:
+            self.helper.log_warning(
+                "Parameter 'curate_labels' has been deprecated. Please read the README.md file for up-to-date documentation"
+            )
+        else:
+            self.ocd_curate_labels = True
         self.ocd_interval = get_config_variable(
             "OCD_INTERVAL", ["ocd", "interval"], config, isNumber=True, default=30
         )
@@ -346,18 +355,19 @@ class OrangeCyberDefense:
             "OCD_DATALAKE_THREAT_ACTOR_AS_INTRUSION_SET",
             ["ocd", "datalake_threat_actor_as_intrusion_set"],
             config,
-            default=None,
         )
         if self.ocd_datalake_threat_actor_as_intrusion_set is None:
             self.ocd_datalake_threat_actor_as_intrusion_set = get_config_variable(
                 "OCD_THREAT_ACTOR_AS_INTRUSION_SET",
                 ["ocd", "threat_actor_as_intrusion_set"],
                 config,
-                default=True,
             )
-            self.helper.log_info(
-                "Parameter 'threat_actor_as_intrusion_set' has been deprecated. Please use 'datalake_threat_actor_as_intrusion_set' instead."
-            )
+            if self.ocd_datalake_threat_actor_as_intrusion_set is not None:
+                self.helper.log_warning(
+                    "Parameter 'threat_actor_as_intrusion_set' has been deprecated. Please use 'datalake_threat_actor_as_intrusion_set' instead."
+                )
+            else:
+                self.ocd_datalake_threat_actor_as_intrusion_set = True
 
         self.update_existing_data = get_config_variable(
             "CONNECTOR_UPDATE_EXISTING_DATA",
@@ -413,7 +423,17 @@ class OrangeCyberDefense:
             self.datalake_instance = Datalake(
                 longterm_token=self.ocd_datalake_token, env=self.ocd_datalake_env
             )
+            if not self._check_permissions():
+                raise ValueError(
+                    "The provided Datalake token does not have 'bulk_search' permission."
+                )
         self.cache = {}
+
+    def _check_permissions(self):
+        user_info = self.datalake_instance.MyAccount.me()
+        permissions = user_info["role"]["administration_permissions"]
+        has_bulk_search_permission = any(p["name"] == "bulk_search" for p in permissions)
+        return has_bulk_search_permission
 
     def _generate_indicator_note(self, indicator_object):
         creation_date = indicator_object.get("created", {})
@@ -521,9 +541,15 @@ class OrangeCyberDefense:
 
         self.helper.log_info(f"Creating Bulk Search task for query hash '{datalake_query_hash}'")
 
-        task = self.datalake_instance.BulkSearch.create_task(
-            for_stix_export=True, query_hash=datalake_query_hash
-        )
+        try:
+            task = self.datalake_instance.BulkSearch.create_task(
+                for_stix_export=True, query_hash=datalake_query_hash
+            )
+        except Exception as e:
+            self.helper.log_error(
+                f"An error occured during the creation of the bulk search task: {str(e)}"
+            )
+            return []
 
         self.helper.log_info(f"Waiting for Bulk Search task {task.uuid} to complete...")
 
@@ -540,9 +566,16 @@ class OrangeCyberDefense:
             )
             return []
 
-        task.download_sync_stream_to_file(
-            output=Output.STIX_ZIP, timeout=60 * 60, output_path=zip_file_path
-        )
+        try:
+            task.download_sync_stream_to_file(
+                output=Output.STIX_ZIP, timeout=60 * 60, output_path=zip_file_path
+            )
+        except TimeoutError:
+            self.helper.log_error("The download task exceeded the time limit.")
+            return []
+        except Exception as e:
+            self.helper.log_error(f"An error occured during the download task: {str(e)}")
+            return []
 
         self.helper.log_info("Processing Bulk Search results...")
 
@@ -893,7 +926,15 @@ class OrangeCyberDefense:
         )
 
         # Create the bulk search task
-        task = datalake_instance.BulkSearch.create_task(for_stix_export=True, query_body=query_body)
+        try:
+            task = datalake_instance.BulkSearch.create_task(
+                for_stix_export=True, query_body=query_body
+            )
+        except Exception as e:
+            self.helper.log_error(
+                f"An error occured during the creation of the bulk search task: {str(e)}"
+            )
+            return
 
         self.helper.log_info(f"Waiting for Bulk Search {task.uuid}...")
         # Download the data as STIX_ZIP
@@ -906,9 +947,16 @@ class OrangeCyberDefense:
             )
             return
 
-        task.download_sync_stream_to_file(
-            output=Output.STIX_ZIP, timeout=60 * 60, output_path=zip_file_path
-        )
+        try:
+            task.download_sync_stream_to_file(
+                output=Output.STIX_ZIP, timeout=60 * 60, output_path=zip_file_path
+            )
+        except TimeoutError:
+            self.helper.log_error("The download task exceeded the time limit.")
+            return
+        except Exception as e:
+            self.helper.log_error(f"An error occured during the download task: {str(e)}")
+            return
 
         self.helper.log_info("Processing Bulk Search results...")
         objects = []
@@ -971,6 +1019,7 @@ class OrangeCyberDefense:
                     query,
                     filter_by_last_updated_date_query_body,
                 )
+                time.sleep(2)
 
         # Update the state if 'modified' field is present
         current_state["datalake"] = (
