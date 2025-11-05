@@ -16,8 +16,8 @@ The following OpenCTI observable types are supported for enrichment and match th
 | Domain-Name             | domain               |
 | Email-Addr              | email                |
 | StixFile                | file                 |
-| IPv4-Addr               | ip                   |
-| IPv6-Addr               | ip                   |
+| IPv4-Addr               | ip,ip_range          |
+| IPv6-Addr               | ip,ip_range          |
 | Phone-Number            | phone_number         |
 | URL                     | url                  |
 
