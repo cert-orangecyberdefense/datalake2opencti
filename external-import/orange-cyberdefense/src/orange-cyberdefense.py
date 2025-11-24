@@ -988,43 +988,43 @@ class OrangeCyberDefense:
         datalake_instance = Datalake(
             longterm_token=self.ocd_datalake_token, env=self.ocd_datalake_env
         )
-        # try:
-        #     adv_search = datalake_instance.AdvancedSearch.advanced_search_from_query_hash(
-        #         query["query_hash"], limit=0
-        #     )
-        #     query_body = adv_search["query_body"]
-        # except Exception as e:
-        #     self.helper.log_error(
-        #         f"{prefix} Could not extract query_body for the following Bulk search : '{query['label']}', error : '{str(e)}'"
-        #     )
-        #     return
+        try:
+            adv_search = datalake_instance.AdvancedSearch.advanced_search_from_query_hash(
+                query["query_hash"], limit=0
+            )
+            query_body = adv_search["query_body"]
+        except Exception as e:
+            self.helper.log_error(
+                f"{prefix} Could not extract query_body for the following Bulk search : '{query['label']}', error : '{str(e)}'"
+            )
+            return
 
-        # if len(query_body.keys()) > 0 and list(query_body.keys())[0] == "AND":
-        #     query_body["AND"].append(filter_by_last_updated_date_query_body)
-        # else:
-        #     self.helper.log_info(
-        #         f"""{prefix} Bulk search {query['label']} doesn't use a main 'AND' operator
-        #         -> unable to filter on last {self.ocd_interval} minutes data."""
-        #     )
+        if len(query_body.keys()) > 0 and list(query_body.keys())[0] == "AND":
+            query_body["AND"].append(filter_by_last_updated_date_query_body)
+        else:
+            self.helper.log_info(
+                f"""{prefix} Bulk search {query['label']} doesn't use a main 'AND' operator
+                -> unable to filter on last {self.ocd_interval} minutes data."""
+            )
 
-        # self.helper.log_info(
-        #     f"{prefix} Creating Bulk Search with label '{query['label']}' in Datalake with the following query hash '{query['query_hash']}'"
-        # )
+        self.helper.log_info(
+            f"{prefix} Creating Bulk Search with label '{query['label']}' in Datalake with the following query hash '{query['query_hash']}'"
+        )
 
-        # # Create the bulk search task
-        # try:
-        #     task = datalake_instance.BulkSearch.create_task(
-        #         for_stix_export=True, query_body=query_body
-        #     )
-        # except Exception as e:
-        #     self.helper.log_error(
-        #         f"{prefix} An error occured during the creation of the bulk search task: {str(e)}"
-        #     )
-        #     return
+        # Create the bulk search task
+        try:
+            task = datalake_instance.BulkSearch.create_task(
+                for_stix_export=True, query_body=query_body
+            )
+        except Exception as e:
+            self.helper.log_error(
+                f"{prefix} An error occured during the creation of the bulk search task: {str(e)}"
+            )
+            return
 
-        # self.helper.log_info(f"{prefix} Waiting for Bulk Search {task.uuid}...")
+        self.helper.log_info(f"{prefix} Waiting for Bulk Search {task.uuid}...")
         # Download the data as STIX_ZIP
-        zip_file_path = self.ocd_datalake_zip_file_path + "/sightings_test2.zip"
+        zip_file_path = self.ocd_datalake_zip_file_path + f"/data_{task.uuid}.zip"
         try:
             os.makedirs(self.ocd_datalake_zip_file_path, exist_ok=True)
         except Exception as e:
@@ -1033,16 +1033,16 @@ class OrangeCyberDefense:
             )
             return
 
-        # try:
-        #     task.download_sync_stream_to_file(
-        #         output=Output.STIX_ZIP, timeout=60 * 60, output_path=zip_file_path
-        #     )
-        # except TimeoutError:
-        #     self.helper.log_error(f"{prefix} The download task exceeded the time limit.")
-        #     return
-        # except Exception as e:
-        #     self.helper.log_error(f"{prefix} An error occured during the download task: {str(e)}")
-        #     return
+        try:
+            task.download_sync_stream_to_file(
+                output=Output.STIX_ZIP, timeout=60 * 60, output_path=zip_file_path
+            )
+        except TimeoutError:
+            self.helper.log_error(f"{prefix} The download task exceeded the time limit.")
+            return
+        except Exception as e:
+            self.helper.log_error(f"{prefix} An error occured during the download task: {str(e)}")
+            return
 
         self.helper.log_info(f"{prefix} Processing Bulk Search results...")
         objects = []
@@ -1050,8 +1050,6 @@ class OrangeCyberDefense:
             processed_object = self._process_object(object)
             if processed_object is None:
                 continue
-            else:
-                self.helper.log_debug("PROCESSED")
             if processed_object["type"] == "indicator":
                 if "labels" not in processed_object:
                     processed_object["labels"] = []
