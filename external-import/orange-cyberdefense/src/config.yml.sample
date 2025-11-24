@@ -23,6 +23,8 @@ ocd:
   datalake_add_extref: true
   datalake_add_summary: true
   datalake_add_related: true
+  datalake_add_sightings: true
+  datalake_add_createdby: true
   import_worldwatch: true
   worldwatch_start_date: '2022-01-01'
   worldwatch_api_key: 'ChangeMe'
