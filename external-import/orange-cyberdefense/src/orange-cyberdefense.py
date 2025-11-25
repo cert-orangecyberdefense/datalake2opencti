@@ -593,6 +593,8 @@ class OrangeCyberDefense:
                 object["source_ref"] = object["source_ref"].replace("threat-actor", "intrusion-set")
                 object["target_ref"] = object["target_ref"].replace("threat-actor", "intrusion-set")
         if object["type"] == "indicator":
+            object["pattern"] = object["pattern"].replace("[x-phone-number:international_phone_number", "[phone-number:value")
+            object["pattern"] = object["pattern"].replace("[x-crypto:value", "[cryptocurrency-wallet:value")
             if self.ocd_datalake_create_observables:
                 object["x_opencti_create_observables"] = True
             if self.ocd_datalake_add_scores_as_labels:
