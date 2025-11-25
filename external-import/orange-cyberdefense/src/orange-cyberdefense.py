@@ -365,7 +365,7 @@ class OrangeCyberDefense:
                     "Parameter 'import_worldwatch_start_date' has been deprecated. Please use 'worldwatch_start_date' instead."
                 )
             else:
-                self.ocd_worldwatch_start_date = "2022-01-01"
+                self.ocd_worldwatch_start_date = "2025-01-01"
 
         # OCD_DATALAKE_QUERIES
         ocd_datalake_queries = get_config_variable(
