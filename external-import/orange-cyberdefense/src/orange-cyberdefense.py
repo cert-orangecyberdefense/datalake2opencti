@@ -623,7 +623,7 @@ class OrangeCyberDefense:
             )
         except Exception as e:
             self.helper.log_error(
-                f"{prefix} An error occured during the creation of the bulk search task: {str(e)}"
+                f"{prefix} An error occurred during the creation of the bulk search task: {str(e)}"
             )
             return []
 
@@ -650,7 +650,7 @@ class OrangeCyberDefense:
             self.helper.log_error(f"{prefix} The download task exceeded the time limit.")
             return []
         except Exception as e:
-            self.helper.log_error(f"{prefix} An error occured during the download task: {str(e)}")
+            self.helper.log_error(f"{prefix} An error occurred during the download task: {str(e)}")
             return []
 
         self.helper.log_info(f"{prefix} Processing Bulk Search results...")
@@ -1018,7 +1018,7 @@ class OrangeCyberDefense:
             )
         except Exception as e:
             self.helper.log_error(
-                f"{prefix} An error occured during the creation of the bulk search task: {str(e)}"
+                f"{prefix} An error occurred during the creation of the bulk search task: {str(e)}"
             )
             return
 
@@ -1041,7 +1041,7 @@ class OrangeCyberDefense:
             self.helper.log_error(f"{prefix} The download task exceeded the time limit.")
             return
         except Exception as e:
-            self.helper.log_error(f"{prefix} An error occured during the download task: {str(e)}")
+            self.helper.log_error(f"{prefix} An error occurred during the download task: {str(e)}")
             return
 
         self.helper.log_info(f"{prefix} Processing Bulk Search results...")
