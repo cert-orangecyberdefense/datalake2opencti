@@ -770,6 +770,8 @@ class OrangeCyberDefense:
                 continue
             if "objects" in data:
                 for stix_object in data["objects"]:
+                    if "labels" not in stix_object:
+                        stix_object["labels"] = []
                     label: str
                     for label in stix_object["labels"]:
                         if tag.lower() == label.lower():
@@ -855,7 +857,9 @@ class OrangeCyberDefense:
         prefix = "[WORLDWATCH IMPORT][generate_report]"
         self.helper.log_info(
             prefix
-            + ' Generating report "'
+            + ' Generating WW report ID '
+            + str(report["id"])
+            + ': "'
             + report["title"]
             + '" ('
             + report["timestamp_updated"]
@@ -863,7 +867,7 @@ class OrangeCyberDefense:
         )
 
         # Managing external references
-        self.helper.log_info(f"{prefix} Processing external references...")
+        self.helper.log_debug(f"{prefix} Processing external references...")
         external_references = []
         # Add external reference to advisory on CERT Portal
         external_reference = stix2.ExternalReference(
@@ -888,34 +892,33 @@ class OrangeCyberDefense:
                 description=report["datalake_url"]["description"],
             )
             external_references.append(external_reference)
-        self.helper.log_info(f"{prefix} Got {len(external_references)} external_references.")
 
         # Getting the iocs object from the report
         if report["datalake_url"]:
             if self.ocd_worldwatch_import_indicators:
-                self.helper.log_info(f"{prefix} Getting iocs from Datalake...")
+                self.helper.log_info(f"{prefix} Getting report IOCs from Datalake...")
                 hashkey = extract_datalake_query_hash(report["datalake_url"]["url"])
                 if hashkey:
                     report_iocs = self._get_report_iocs(
                         datalake_query_hash=hashkey,
                     )
                 else:
-                    self.helper.log_info(
-                        f"{prefix} No hashkey found in datalake url: {report['datalake_url']['url']}"
+                    self.helper.log_warning(
+                        f"{prefix} No hashkey found in Datalake url: {report['datalake_url']['url']}"
                     )
                     report_iocs = []
+                self.helper.log_info(f"{prefix} Got {len(report_iocs)} stix objects from Datalake.")
             else:
-                self.helper.log_info(f"{prefix} Skipping because datalake is not configured")
+                self.helper.log_debug(f"{prefix} Skipping because Datalake is not configured")
                 report_iocs = []
         else:
-            self.helper.log_info(f"{prefix} No datalake url found")
+            self.helper.log_debug(f"{prefix} No Datalake url found")
             report_iocs = []
-        self.helper.log_info(f"{prefix} Got {len(report_iocs)} stix objects from datalake.")
 
         # Getting the report entities
-        self.helper.log_info(f"{prefix} Getting report entities...")
         tags = set(report["tags"]) | set(report["advisory_tags"])
         if self.ocd_worldwatch_import_threat_entities and tags:
+            self.helper.log_info(f"{prefix} Getting report threat entities from Datalake...")
             report_entities = self._get_report_entities(tags)
         else:
             report_entities = []
@@ -1007,9 +1010,6 @@ class OrangeCyberDefense:
 
         for content_block in content_block_list:
             try:
-                self.helper.log_info(
-                    f"---------------------------------- WorldWatch -> {content_block['id']}-------------------------------------------"
-                )
                 content_block_objects = self._generate_report(content_block)
                 if content_block_objects:
                     batch_objects.extend(content_block_objects)
