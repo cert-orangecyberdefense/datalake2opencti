@@ -8,35 +8,36 @@ connector:
   type: 'EXTERNAL_IMPORT'
   name: 'Orange Cyberdefense Cyber Threat Intelligence'
   scope: 'identity,attack-pattern,intrusion-set,malware,tool,report,location,vulnerability,indicator,campaign,relationship'
-  confidence_level: 100 # From 0 (Unknown) to 100 (Fully trusted)
   update_existing_data: true
   log_level: 'info'
 
 ocd:
+  import_datalake: true
+  import_threat_library: true
+  import_worldwatch: true
   datalake_env: 'prod'
   datalake_token: 'ChangeMe'
-  datalake_zip_file_path: '/opt/opencti-connector-orange-cyberdefense'
-  datalake_zip_file_delete: true
+  datalake_queries: '[{"query_hash":"bb08a750538baea3e1c8cda0ae5b3aca","label":"high_confidence_network_iocs"},{"query_hash":"1ac760cbaec854a6c463d92c8f862c98","label":"ocd_peerpressure_c2_tracker"}]'
+  datalake_create_observables: true
+  datalake_ignore_unscored_indicators: true
+  datalake_ignore_whitelisted_indicators: true
+  datalake_fallback_score: 0
   datalake_add_tags_as_labels: true
   datalake_add_scores_as_labels: true
   datalake_add_score: true
+  datalake_add_tlp: true
   datalake_add_extref: true
   datalake_add_summary: true
   datalake_add_related: true
   datalake_add_sightings: true
   datalake_add_createdby: true
-  import_worldwatch: true
-  worldwatch_start_date: '2022-01-01'
-  worldwatch_api_key: 'ChangeMe'
-  import_threat_library: true
-  import_datalake: true
-  datalake_queries: '[{"query_hash":"b56b43144690145c115e8f5fee9dade3","label":"high_confidence_network_iocs"},{"query_hash":"346f3acbcb29f476d56b6689c36ea6d4","label":"ocd_peerpressure_c2_tracker"}]'
-  datalake_create_observables: true  # Create observables from indicators
-  curate_labels: true # Curated labels
+  datalake_curate_labels: true
   datalake_threat_actor_as_intrusion_set: true
-  interval: 30 # Required, in minutes. Minimum recommended 30
-  reset_state: false # force the use of the start_dates from the config instead of getting the state saved in opencti
-  add_tlp: true
-  ignore_unscored_indicators: true
-  ignore_whitelisted_indicators: true
-  fallback_score: 0
+  datalake_zip_file_path: '/opt/opencti-connector-orange-cyberdefense/data'
+  datalake_zip_file_delete: true
+  worldwatch_api_key: 'ChangeMe'
+  worldwatch_import_indicators: true
+  worldwatch_import_threat_entities: true
+  worldwatch_start_date: '2025-01-01'
+  interval: 30
+  reset_state: false

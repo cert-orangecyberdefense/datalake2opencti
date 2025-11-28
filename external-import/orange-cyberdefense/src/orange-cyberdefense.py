@@ -9,7 +9,6 @@ from html.parser import HTMLParser
 from io import StringIO
 from typing import Iterable, TypeVar
 from concurrent.futures import ThreadPoolExecutor
-
 import html2text
 import requests
 import stix2
@@ -246,32 +245,96 @@ class OrangeCyberDefense:
             "OCD_DATALAKE_ENV", ["ocd", "datalake_env"], config, default="prod"
         )
 
-        # OCD_DATALAKE_TOKEN
-        self.ocd_datalake_token = get_config_variable(
-            "OCD_DATALAKE_TOKEN", ["ocd", "datalake_token"], config
+        # OCD_DATALAKE_QUERIES
+        ocd_datalake_queries = get_config_variable(
+            "OCD_DATALAKE_QUERIES",
+            ["ocd", "datalake_queries"],
+            config,
         )
-        if not self.ocd_datalake_token and (
-            self.ocd_import_datalake or self.ocd_import_threat_library
-        ):
-            raise ValueError(
-                "Parameter 'datalake_token' is missing, but at least one of 'import_datalake' or 'import_threat_library' is enabled."
+        if self.ocd_import_datalake:
+            if ocd_datalake_queries:
+                self.ocd_datalake_queries = json.loads(ocd_datalake_queries)
+            else:
+                raise ValueError(
+                    "Parameter 'OCD_DATALAKE_QUERIES' is missing, but 'OCD_IMPORT_DATALAKE' is enabled."
+                )
+                
+
+        # OCD_DATALAKE_CREATE_OBSERVABLES / OCD_CREATE_OBSERVABLES
+        self.ocd_datalake_create_observables = get_config_variable(
+            "OCD_DATALAKE_CREATE_OBSERVABLES",
+            ["ocd", "datalake_create_observables"],
+            config,
+        )
+        if self.ocd_datalake_create_observables is None:
+            self.ocd_datalake_create_observables = get_config_variable(
+                "OCD_CREATE_OBSERVABLES",
+                ["ocd", "create_observables"],
+                config,
             )
+            if self.ocd_datalake_create_observables is not None:
+                self.helper.log_warning(
+                    "Parameter 'OCD_CREATE_OBSERVABLES' has been deprecated. Please use 'OCD_DATALAKE_CREATE_OBSERVABLES' instead."
+                )
+            else:
+                self.ocd_datalake_create_observables = True
 
-        # OCD_DATALAKE_ZIP_FILE_PATH
-        self.ocd_datalake_zip_file_path = get_config_variable(
-            "OCD_DATALAKE_ZIP_FILE_PATH",
-            ["ocd", "datalake_zip_file_path"],
+        # OCD_DATALAKE_IGNORE_UNSCORED_INDICATORS / OCD_IGNORE_UNSCORED_INDICATORS
+        self.ocd_datalake_ignore_unscored_indicators = get_config_variable(
+            "OCD_DATALAKE_IGNORE_UNSCORED_INDICATORS",
+            ["ocd", "datalake_ignore_unscored_indicators"],
             config,
-            default="/opt/opencti-connector-orange-cyberdefense/data",
         )
+        if self.ocd_datalake_ignore_unscored_indicators is None:
+            self.ocd_datalake_ignore_unscored_indicators = get_config_variable(
+                "OCD_IGNORE_UNSCORED_INDICATORS",
+                ["ocd", "ignore_unscored_indicators"],
+                config,
+            )
+            if self.ocd_datalake_ignore_unscored_indicators is not None:
+                self.helper.log_warning(
+                    "Parameter 'OCD_IGNORE_UNSCORED_INDICATORS' has been deprecated. Please use 'OCD_DATALAKE_IGNORE_UNSCORED_INDICATORS' instead."
+                )
+            else:
+                self.ocd_datalake_ignore_unscored_indicators = True
 
-        # OCD_DATALAKE_ZIP_FILE_DELETE
-        self.ocd_datalake_zip_file_delete = get_config_variable(
-            "OCD_DATALAKE_ZIP_FILE_DELETE",
-            ["ocd", "datalake_zip_file_delete"],
+        # OCD_DATALAKE_IGNORE_WHITELISTED_INDICATORS / OCD_IGNORE_WHITELISTED_INDICATORS
+        self.ocd_datalake_ignore_whitelisted_indicators = get_config_variable(
+            "OCD_DATALAKE_IGNORE_WHITELISTED_INDICATORS",
+            ["ocd", "datalake_ignore_whitelisted_indicators"],
             config,
-            default=True,
         )
+        if self.ocd_datalake_ignore_whitelisted_indicators is None:
+            self.ocd_datalake_ignore_whitelisted_indicators = get_config_variable(
+                "OCD_IGNORE_WHITELISTED_INDICATORS",
+                ["ocd", "ignore_whitelisted_indicators"],
+                config,
+            )
+            if self.ocd_datalake_ignore_whitelisted_indicators is not None:
+                self.helper.log_warning(
+                    "Parameter 'OCD_IGNORE_WHITELISTED_INDICATORS' has been deprecated. Please use 'OCD_DATALAKE_IGNORE_WHITELISTED_INDICATORS' instead."
+                )
+            else:
+                self.ocd_datalake_ignore_whitelisted_indicators = True
+
+        # OCD_DATALAKE_FALLBACK_SCORE / OCD_FALLBACK_SCORE
+        self.ocd_datalake_fallback_score = get_config_variable(
+            "OCD_DATALAKE_FALLBACK_SCORE",
+            ["ocd", "datalake_fallback_score"],
+            config,
+        )
+        if self.ocd_datalake_fallback_score is None:
+            self.ocd_datalake_fallback_score = get_config_variable(
+                "OCD_FALLBACK_SCORE",
+                ["ocd", "fallback_score"],
+                config,
+            )
+            if self.ocd_datalake_fallback_score is not None:
+                self.helper.log_warning(
+                    "Parameter 'OCD_FALLBACK_SCORE' has been deprecated. Please use 'OCD_DATALAKE_FALLBACK_SCORE' instead."
+                )
+            else:
+                self.ocd_datalake_fallback_score = 0
 
         # OCD_DATALAKE_ADD_TAGS_AS_LABELS
         self.ocd_datalake_add_tags_as_labels = get_config_variable(
@@ -292,6 +355,14 @@ class OrangeCyberDefense:
         # OCD_DATALAKE_ADD_SCORE
         self.ocd_datalake_add_score = get_config_variable(
             "OCD_DATALAKE_ADD_SCORE", ["ocd", "datalake_add_score"], config, default=True
+        )
+
+        # OCD_DATALAKE_ADD_TLP
+        self.ocd_datalake_add_tlp = get_config_variable(
+            "OCD_DATALAKE_ADD_TLP",
+            ["ocd", "datalake_add_tlp"],
+            config,
+            default=True,
         )
 
         # OCD_DATALAKE_ADD_EXTREF
@@ -315,6 +386,7 @@ class OrangeCyberDefense:
             default=True,
         )
 
+        # OCD_DATALAKE_ADD_SIGHTINGS
         self.ocd_datalake_add_sightings = get_config_variable(
             "OCD_DATALAKE_ADD_SIGHTINGS",
             ["ocd", "datalake_add_sightings"],
@@ -322,98 +394,48 @@ class OrangeCyberDefense:
             default=True,
         )
 
+        # OCD_DATALAKE_ADD_CREATEDBY
         self.ocd_datalake_add_createdby = get_config_variable(
             "OCD_DATALAKE_ADD_CREATEDBY",
             ["ocd", "datalake_add_createdby"],
             config,
             default=True,
         )
+        
+        # OCD_DATALAKE_ZIP_FILE_PATH
+        self.ocd_datalake_zip_file_path = get_config_variable(
+            "OCD_DATALAKE_ZIP_FILE_PATH",
+            ["ocd", "datalake_zip_file_path"],
+            config,
+            default="/opt/opencti-connector-orange-cyberdefense/data",
+        )
 
-        # OCD_WORLDWATCH_API_KEY / OCD_IMPORT_WORLDWATCH_API_KEY
-        self.ocd_worldwatch_api_key = get_config_variable(
-            "OCD_WORLDWATCH_API_KEY",
-            ["ocd", "worldwatch_api_key"],
+        # OCD_DATALAKE_ZIP_FILE_DELETE
+        self.ocd_datalake_zip_file_delete = get_config_variable(
+            "OCD_DATALAKE_ZIP_FILE_DELETE",
+            ["ocd", "datalake_zip_file_delete"],
+            config,
+            default=True,
+        )
+
+        # OCD_DATALAKE_CURATE_LABELS / OCD_CURATE_LABELS
+        self.ocd_datalake_curate_labels = get_config_variable(
+            "OCD_DATALAKE_CURATE_LABELS",
+            ["ocd", "datalake_curate_labels"],
             config,
         )
-        if self.ocd_worldwatch_api_key is None:
-            self.ocd_worldwatch_api_key = get_config_variable(
-                "OCD_IMPORT_WORLDWATCH_API_KEY", ["ocd", "import_worldwatch_api_key"], config
-            )
-            if self.ocd_worldwatch_api_key:
-                self.helper.log_warning(
-                    "Parameter 'import_worldwatch_api_key' has been deprecated. Please use 'worldwatch_api_key' instead."
-                )
-        if not self.ocd_worldwatch_api_key and self.ocd_import_worldwatch:
-            raise ValueError(
-                "Parameter 'worldwatch_api_key' is missing, but 'import_worldwatch' is enabled."
-            )
-
-        # OCD_WORLDWATCH_START_DATE / OCD_IMPORT_WORLDWATCH_START_DATE
-        self.ocd_worldwatch_start_date = get_config_variable(
-            "OCD_WORLDWATCH_START_DATE",
-            ["ocd", "worldwatch_start_date"],
-            config,
-        )
-        if self.ocd_worldwatch_start_date is None:
-            self.ocd_worldwatch_start_date = get_config_variable(
-                "OCD_IMPORT_WORLDWATCH_START_DATE",
-                ["ocd", "import_worldwatch_start_date"],
+        if self.ocd_datalake_curate_labels is None:
+            self.ocd_datalake_curate_labels = get_config_variable(
+                "OCD_CURATE_LABELS",
+                ["ocd", "curate_labels"],
                 config,
             )
-            if self.ocd_worldwatch_start_date:
+            if self.ocd_datalake_curate_labels is not None:
                 self.helper.log_warning(
-                    "Parameter 'import_worldwatch_start_date' has been deprecated. Please use 'worldwatch_start_date' instead."
+                    "Parameter 'OCD_CURATE_LABELS' has been deprecated. Please use 'OCD_DATALAKE_CURATE_LABELS' instead."
                 )
             else:
-                self.ocd_worldwatch_start_date = "2025-01-01"
-
-        # OCD_DATALAKE_QUERIES
-        ocd_datalake_queries = get_config_variable(
-            "OCD_DATALAKE_QUERIES",
-            ["ocd", "datalake_queries"],
-            config,
-        )
-        if not ocd_datalake_queries and self.ocd_import_datalake:
-            raise ValueError(
-                "Parameter 'datalake_queries' is missing, but 'import_datalake' is enabled."
-            )
-        else:
-            self.ocd_datalake_queries = json.loads(ocd_datalake_queries)
-
-        # OCD_DATALAKE_CREATE_OBSERVABLES / OCD_CREATE_OBSERVABLES
-        self.ocd_datalake_create_observables = get_config_variable(
-            "OCD_DATALAKE_CREATE_OBSERVABLES",
-            ["ocd", "datalake_create_observables"],
-            config,
-        )
-        if self.ocd_datalake_create_observables is None:
-            self.ocd_datalake_create_observables = get_config_variable(
-                "OCD_CREATE_OBSERVABLES",
-                ["ocd", "create_observables"],
-                config,
-            )
-            if self.ocd_datalake_create_observables is not None:
-                self.helper.log_warning(
-                    "Parameter 'create_observables' has been deprecated. Please use 'datalake_create_observables' instead."
-                )
-            else:
-                self.ocd_datalake_create_observables = True
-
-        # OCD_CURATE_LABELS
-        self.ocd_curate_labels = get_config_variable(
-            "OCD_CURATE_LABELS", ["ocd", "curate_labels"], config
-        )
-        if self.ocd_curate_labels is not None:
-            self.helper.log_warning(
-                "Parameter 'curate_labels' has been deprecated. Please read the README.md file for up-to-date documentation"
-            )
-        else:
-            self.ocd_curate_labels = True
-
-        # OCD_INTERVAL
-        self.ocd_interval = get_config_variable(
-            "OCD_INTERVAL", ["ocd", "interval"], config, isNumber=True, default=30
-        )
+                self.ocd_datalake_curate_labels = True
 
         # OCD_DATALAKE_THREAT_ACTOR_AS_INTRUSION_SET / OCD_THREAT_ACTOR_AS_INTRUSION_SET
         self.ocd_datalake_threat_actor_as_intrusion_set = get_config_variable(
@@ -429,10 +451,69 @@ class OrangeCyberDefense:
             )
             if self.ocd_datalake_threat_actor_as_intrusion_set is not None:
                 self.helper.log_warning(
-                    "Parameter 'threat_actor_as_intrusion_set' has been deprecated. Please use 'datalake_threat_actor_as_intrusion_set' instead."
+                    "Parameter 'OCD_THREAT_ACTOR_AS_INTRUSION_SET' has been deprecated. Please use 'OCD_DATALAKE_THREAT_ACTOR_AS_INTRUSION_SET' instead."
                 )
             else:
                 self.ocd_datalake_threat_actor_as_intrusion_set = True
+
+        # OCD_WORLDWATCH_API_KEY / OCD_IMPORT_WORLDWATCH_API_KEY
+        self.ocd_worldwatch_api_key = get_config_variable(
+            "OCD_WORLDWATCH_API_KEY",
+            ["ocd", "worldwatch_api_key"],
+            config,
+        )
+        if self.ocd_worldwatch_api_key is None:
+            self.ocd_worldwatch_api_key = get_config_variable(
+                "OCD_IMPORT_WORLDWATCH_API_KEY", ["ocd", "import_worldwatch_api_key"], config
+            )
+            if self.ocd_worldwatch_api_key:
+                self.helper.log_warning(
+                    "Parameter 'OCD_IMPORT_WORLDWATCH_API_KEY' has been deprecated. Please use 'OCD_WORLDWATCH_API_KEY' instead."
+                )
+        if not self.ocd_worldwatch_api_key and self.ocd_import_worldwatch:
+            raise ValueError(
+                "Parameter 'OCD_WORLDWATCH_API_KEY' is missing, but 'OCD_IMPORT_WORLDWATCH' is enabled."
+            )
+
+        # OCD_WORLDWATCH_IMPORT_INDICATORS
+        self.ocd_worldwatch_import_indicators = get_config_variable(
+            "OCD_WORLDWATCH_IMPORT_INDICATORS",
+            ["ocd", "worldwatch_import_indicators"],
+            config,
+            default=True,
+        )
+
+        # OCD_WORLDWATCH_IMPORT_THREAT_ENTITIES
+        self.ocd_worldwatch_import_threat_entities = get_config_variable(
+            "OCD_WORLDWATCH_IMPORT_THREAT_ENTITIES",
+            ["ocd", "worldwatch_import_threat_entities"],
+            config,
+            default=True,
+        )
+
+        # OCD_WORLDWATCH_START_DATE / OCD_IMPORT_WORLDWATCH_START_DATE
+        self.ocd_worldwatch_start_date = get_config_variable(
+            "OCD_WORLDWATCH_START_DATE",
+            ["ocd", "worldwatch_start_date"],
+            config,
+        )
+        if self.ocd_worldwatch_start_date is None:
+            self.ocd_worldwatch_start_date = get_config_variable(
+                "OCD_IMPORT_WORLDWATCH_START_DATE",
+                ["ocd", "import_worldwatch_start_date"],
+                config,
+            )
+            if self.ocd_worldwatch_start_date:
+                self.helper.log_warning(
+                    "Parameter 'OCD_IMPORT_WORLDWATCH_START_DATE' has been deprecated. Please use 'OCD_WORLDWATCH_START_DATE' instead."
+                )
+            else:
+                self.ocd_worldwatch_start_date = "2025-01-01"
+
+        # OCD_INTERVAL
+        self.ocd_interval = get_config_variable(
+            "OCD_INTERVAL", ["ocd", "interval"], config, isNumber=True, default=30
+        )
 
         # OCD_RESET_STATE
         self.ocd_reset_state = get_config_variable(
@@ -442,38 +523,21 @@ class OrangeCyberDefense:
             default=False,
         )
 
-        # OCD_ADD_TLP
-        self.ocd_add_tlp = get_config_variable(
-            "OCD_ADD_TLP",
-            ["ocd", "add_tlp"],
-            config,
-            default=True,
+        # OCD_DATALAKE_TOKEN
+        self.ocd_datalake_token = get_config_variable(
+            "OCD_DATALAKE_TOKEN", ["ocd", "datalake_token"], config
         )
-
-        # OCD_IGNORE_UNSCORED_INDICATORS
-        self.ocd_ignore_unscored_indicators = get_config_variable(
-            "OCD_IGNORE_UNSCORED_INDICATORS",
-            ["ocd", "ignore_unscored_indicators"],
-            config,
-            default=True,
-        )
-
-        # OCD_IGNORE_WHITELISTED_INDICATORS
-        self.ocd_ignore_whitelisted_indicators = get_config_variable(
-            "OCD_IGNORE_WHITELISTED_INDICATORS",
-            ["ocd", "ignore_whitelisted_indicators"],
-            config,
-            default=True,
-        )
-
-        # OCD_FALLBACK_SCORE
-        self.ocd_fallback_score = get_config_variable(
-            "OCD_FALLBACK_SCORE",
-            ["ocd", "fallback_score"],
-            config,
-            isNumber=True,
-            default=0,
-        )
+        if not self.ocd_datalake_token and (
+            self.ocd_import_datalake
+            or self.ocd_import_threat_library
+            or (self.ocd_import_worldwatch and (
+                self.ocd_worldwatch_import_indicators
+                or self.ocd_worldwatch_import_threat_entities
+            ))
+        ):
+            raise ValueError(
+                "Parameter 'OCD_DATALAKE_TOKEN' is missing, but one of 'OCD_IMPORT_DATALAKE', 'OCD_IMPORT_THREAT_LIBRARY', 'OCD_WORLDWATCH_IMPORT_INDICATORS' or 'OCD_WORLDWATCH_IMPORT_THREAT_ENTITIES' is enabled."
+            )
 
         # Init variables
         self.identity = self.helper.api.identity.create(
@@ -488,7 +552,13 @@ class OrangeCyberDefense:
             x_opencti_order=99,
             x_opencti_color="#ff7900",
         )
-        if self.ocd_import_datalake or self.ocd_import_threat_library:
+        if (
+            self.ocd_import_datalake
+            or self.ocd_import_threat_library
+            or (self.ocd_import_worldwatch and (
+                self.ocd_worldwatch_import_indicators
+                or self.ocd_worldwatch_import_threat_entities
+            ))):
             self.datalake_instance = Datalake(
                 longterm_token=self.ocd_datalake_token, env=self.ocd_datalake_env
             )
@@ -534,11 +604,11 @@ class OrangeCyberDefense:
             "tlp:amber": [stix2.TLP_AMBER.get("id"), self.marking["standard_id"]],
             "tlp:red": [stix2.TLP_RED.get("id"), self.marking["standard_id"]],
         }
-        if "labels" in object and self.ocd_add_tlp:
+        if "labels" in object and self.ocd_datalake_add_tlp:
             for label in object["labels"]:
                 if label in dict_label_to_object_marking_refs.keys():
                     object["object_marking_refs"] = dict_label_to_object_marking_refs[label]
-        if "labels" in object and self.ocd_curate_labels:
+        if "labels" in object and self.ocd_datalake_curate_labels:
             object["labels"] = _curate_labels(object["labels"])
         if not self.ocd_datalake_add_tags_as_labels:
             object["labels"] = []
@@ -549,11 +619,11 @@ class OrangeCyberDefense:
             if len(scores) > 0:
                 object["x_opencti_score"] = max(scores)
             else:
-                if self.ocd_ignore_unscored_indicators:
+                if self.ocd_datalake_ignore_unscored_indicators:
                     return None
                 else:
-                    object["x_opencti_score"] = self.ocd_fallback_score
-        if object.get("x_datalake_whitelist_sources") and self.ocd_ignore_whitelisted_indicators:
+                    object["x_opencti_score"] = self.ocd_datalake_fallback_score
+        if object.get("x_datalake_whitelist_sources") and self.ocd_datalake_ignore_whitelisted_indicators:
             return None
         if (
             "x_datalake_atom_type" in object
@@ -821,9 +891,9 @@ class OrangeCyberDefense:
         self.helper.log_info(f"{prefix} Got {len(external_references)} external_references.")
 
         # Getting the iocs object from the report
-        self.helper.log_info(f"{prefix} Getting iocs from Datalake...")
         if report["datalake_url"]:
-            if self.ocd_import_datalake or self.ocd_import_threat_library:
+            if self.ocd_worldwatch_import_indicators:
+                self.helper.log_info(f"{prefix} Getting iocs from Datalake...")
                 hashkey = extract_datalake_query_hash(report["datalake_url"]["url"])
                 if hashkey:
                     report_iocs = self._get_report_iocs(
@@ -845,7 +915,7 @@ class OrangeCyberDefense:
         # Getting the report entities
         self.helper.log_info(f"{prefix} Getting report entities...")
         tags = set(report["tags"]) | set(report["advisory_tags"])
-        if (self.ocd_import_datalake or self.ocd_import_threat_library) and tags:
+        if self.ocd_worldwatch_import_threat_entities and tags:
             report_entities = self._get_report_entities(tags)
         else:
             report_entities = []
