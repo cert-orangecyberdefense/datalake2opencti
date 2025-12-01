@@ -138,7 +138,7 @@ Notes:
 - When enabling this import type, the variables `OCD_DATALAKE_TOKEN` and `OCD_DATALAKE_QUERIES` are also required.
 - Although the import is based on a query hash, an additional filter is added to prevent overloaded queries and duplicate imports. This results in the exclusion of indicators older than n seconds, where `n = OCD_INTERVAL + 15 * 60`.
   - Because of this, it make take a few days for the data to be representative.
-- Parameters related to this import type (starting with `OCD_DATALAKE_`) also applies for indicators ingested by World Watch imports (see below in #world-watch-import).
+- Parameters related to this import type (starting with `OCD_DATALAKE_`) also applies for indicators ingested by World Watch imports (see below in [this section dedicated to World Watch imports](#world-watch-import)).
 
 #### About scoring
 
