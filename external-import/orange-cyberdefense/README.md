@@ -82,51 +82,51 @@ Other prerequisites for using this connector includes:
 
 ### Environment variables
 
-| Parameter                       | Docker envvar                       | Mandatory | Description |
-|---------------------------------|-------------------------------------|-----------|-------------|
-| `opencti_url`                   | `OPENCTI_URL`                       | Yes       | The URL of the OpenCTI platform. |
-| `opencti_token`                 | `OPENCTI_TOKEN`                     | Yes       | The default admin token configured in the OpenCTI platform parameters file. |
-| `connector_id`                  | `CONNECTOR_ID`                      | Yes       | A valid arbitrary `UUIDv4` that must be unique for this connector. |
-| `connector_name`                | `CONNECTOR_NAME`                    | Yes       | `Orange Cyberdefense Cyber Threat Intelligence` |
-| `update_existing_data`          | `CONNECTOR_UPDATE_EXISTING_DATA`    | Yes       | Update data already ingested into the platform. |
-| `log_level`                     | `CONNECTOR_LOG_LEVEL`               | No        | Log output for the connector. Defaults to `INFO`. |
-| `import_datalake`               | `OCD_IMPORT_DATALAKE`               | Yes       | Set if you want to ingest indicators collections from the Datalake. Defaults to `true`. |
-| `import_threat_library`         | `OCD_IMPORT_THREAT_LIBRARY`         | Yes       | If `true`, at each run the latest 500 entries (Malware, Intrusion Set, Tools, Attack Patterns, Vulnerabilities, ...) from the [Datalake Threat Library](https://datalake.cert.orangecyberdefense.com/gui/threats-library) will be ingested. Defaults to `true`. |
-| `import_worldwatch`             | `OCD_IMPORT_WORLDWATCH`             | Yes       | If `true`, World Watch reports will be ingested into OpenCTI. Defaults to `true`. |
-| `datalake_env`                  | `OCD_DATALAKE_ENV`                  | No        | ⚠️ Advanced setting* - Datalake environment to use: `prod` or `preprod`. Defaults to `prod`. |
-| `datalake_token`                | `OCD_DATALAKE_TOKEN`                | No        | Long Term Token used to access Datalake API. Mandatory if `OCD_IMPORT_DATALAKE` or `OCD_IMPORT_THREAT_LIBRARY` set to `true`. |
-| `datalake_queries`              | `OCD_DATALAKE_QUERIES`              | No        | List of search `query_hash` for indicator's collection you want to ingest. Mandatory if `OCD_IMPORT_DATALAKE` set to `true`. |
-| ~~`create_observables`~~        | ~~`OCD_CREATE_OBSERVABLES`~~        | No        | 🛑 Deprecated - Use `OCD_WORLDWATCH_START_DATE` instead. |
-| `datalake_create_observables`   | `OCD_DATALAKE_CREATE_OBSERVABLES`   | No        | Create observables from indicators. Defaults to `true`. |
-| ~~`ignore_unscored_indicators`~~    | ~~`OCD_IGNORE_UNSCORED_INDICATORS`~~    | No        | 🛑 Deprecated - Use `OCD_DATALAKE_IGNORE_UNSCORED_INDICATORS` instead. |
-| `datalake_ignore_unscored_indicators`    | `OCD_DATALAKE_IGNORE_UNSCORED_INDICATORS`    | No        | If `true`, Datalake indicators that do not have any score will NOT be imported into OpenCTI. Defaults to `true`. |
-| ~~`ignore_whitelisted_indicators`~~ | ~~`OCD_IGNORE_WHITELISTED_INDICATORS`~~ | No        | 🛑 Deprecated - Use `OCD_DATALAKE_IGNORE_WHITELISTED_INDICATORS` instead. |
-| `datalake_ignore_whitelisted_indicators` | `OCD_DATALAKE_IGNORE_WHITELISTED_INDICATORS` | No        | If `true`, Datalake indicators that are whitelisted NOT be imported into OpenCTI. Defaults to `true`. |
-| ~~`fallback_score`~~                | ~~`OCD_FALLBACK_SCORE`~~                | No        | 🛑 Deprecated - Use `OCD_DATALAKE_FALLBACK_SCORE` instead. |
-| `datalake_fallback_score`                | `OCD_DATALAKE_FALLBACK_SCORE`                | No        | If `OCD_IGNORE_UNSCORED_INDICATORS` is set to `false`, this value will be used as a default for Datalake indicators without any score. Defaults to `0`. |
-| `datalake_add_tags_as_labels`   | `OCD_DATALAKE_ADD_TAGS_AS_LABELS`   | No        | Whether to add Datalake tags as labels to the imported indicators. Defaults to `true`. |
-| `datalake_add_scores_as_labels` | `OCD_DATALAKE_ADD_SCORES_AS_LABELS` | No        | Whether to add Datalake threat scores as labels to the imported indicators. Full explanation in [this section below](#about-scoring). Defaults to `true`. |
-| `datalake_add_score`            | `OCD_DATALAKE_ADD_SCORE`            | No        | Whether to add score to the imported indicators (overwrite existing). Full explanation in [this section below](#about-scoring). Defaults to `true`. |
-| `datalake_add_tlp`              | `OCD_DATALAKE_ADD_TLP`              | No        | Whether to add a TLP marking to the imported indicators (overwrite existing). Defaults to `true`. |
-| `datalake_add_extref`           | `OCD_DATALAKE_ADD_EXTREF`           | No        | Whether to add external references to the imported indicators. This typically adds a direct link to the matching Datalake threat and other external references stored in Datalake. Defaults to `true`. |
-| `datalake_add_summary`          | `OCD_DATALAKE_ADD_SUMMARY`          | No        | Whether to add a threat summary as a note to the imported indicators. It contains a breakdown of the score by threat categories, and a list of sources. Defaults to `true`. |
-| `datalake_add_related`          | `OCD_DATALAKE_ADD_RELATED`          | No        | Whether to import objects from the Threat Library related to imported indicators, such as malwares, campaigns, etc. Full explanation in [this section below](#about-related-entities). Defaults to `true`. |
-| `datalake_add_sightings`        | `OCD_DATALAKE_ADD_SIGHTINGS`        | No        | Whether to add sightings linked to indicators from positive sighting in Datalake. Full explanation in [this section below](#about-sightings). Defaults to `true`. |
-| `datalake_add_createdby`        | `OCD_DATALAKE_ADD_CREATEDBY`        | No        | Whether to add a reference to "Orange Cyberdefense" organization as author of OpenCTI objects. Defaults to `true`. |
-| `datalake_zip_file_path`        | `OCD_DATALAKE_ZIP_FILE_PATH`        | No        | ⚠️ Advanced setting* - Path were temporary ZIP files will be saved. Defaults to `/opt/opencti-connector-orange-cyberdefense/data`. |
-| `datalake_zip_file_delete`      | `OCD_DATALAKE_ZIP_FILE_DELETE`      | No        | ⚠️ Advanced setting* - If `true`, temporary ZIP files will be deleted after processing. Defaults to `true`. |
-| ~~`curate_labels`~~             | ~~`OCD_CURATE_LABELS`~~             | No        | 🛑 Deprecated - Use `OCD_DATALAKE_CURATE_LABELS` instead. |
-| `datalake_curate_labels`        | `OCD_DATALAKE_CURATE_LABELS`        | No        | ⚠️ Advanced setting* - Adapt Datalake CTI tags as STIX labels. Defaults to `true`. |
-| ~~`threat_actor_as_intrusion_set`~~ | ~~`OCD_THREAT_ACTOR_AS_INTRUSION_SET`~~ | No        | 🛑 Deprecated - Use `OCD_DATALAKE_THREAT_ACTOR_AS_INTRUSION_SET` instead. |
-| `datalake_threat_actor_as_intrusion_set` | `OCD_DATALAKE_THREAT_ACTOR_AS_INTRUSION_SET` | No        | ⚠️ Advanced setting* - Transform Threat Actor objects from Datalake to Intrusion Set objects. Defaults to `true`. |
-| ~~`import_worldwatch_api_key`~~ | ~~`OCD_IMPORT_WORLDWATCH_API_KEY`~~ | No        | 🛑 Deprecated - Use `OCD_WORLDWATCH_API_KEY` instead. |
-| `worldwatch_api_key`     | `OCD_WORLDWATCH_API_KEY`     | No        | WorldWatch API Key. Mandatory if `OCD_IMPORT_WORLDWATCH` set to `true`. |
-| ~~`import_worldwatch_start_date`~~  | ~~`OCD_IMPORT_WORLDWATCH_START_DATE`~~  | No        | 🛑 Deprecated - Use `OCD_WORLDWATCH_START_DATE` instead. |
-| `worldwatch_start_date`  | `OCD_WORLDWATCH_START_DATE`  | No        | Start date for import of World Watch reports. Defaults to `2022-01-01`. Mandatory if `OCD_IMPORT_WORLDWATCH` set to `true`. |
-| `worldwatch_import_indicators`  | `OCD_WORLDWATCH_IMPORT_INDICATORS`  | No        | Whether to import indicators from Datalake related to imported reports. Full explanation in [this section below](#related-indicators-and-entities). Defaults to `true`. |
-| `worldwatch_import_threat_entities`  | `OCD_WORLDWATCH_IMPORT_THREAT_ENTITIES`  | No        | Whether to import objects from the Threat Library related to imported reports, such as malwares, campaigns, etc. Full explanation in [this section below](#related-indicators-and-entities). Defaults to `true`. |
-| `interval`                      | `OCD_INTERVAL`                      | Yes       | Time interval in minutes defining the frequency of the data ingestion process. Minimum recommended `30`. Defaults to `30`. |
-| `reset_state`                   | `OCD_RESET_STATE`                   | No        | ⚠️ Advanced setting* - Force the use of the start date from the config instead of getting the state saved in OpenCTI. Full explanation in [this section below](#about-connector-state). Defaults to `false`. |
+| Parameter / Docker environment variables                                                  | Mandatory | Description |
+|-------------------------------------------------------------------------------------------|-----------|-------------|
+| `opencti_url`<br/>`OPENCTI_URL`                                                           | Yes       | The URL of the OpenCTI platform. |
+| `opencti_token`<br/>`OPENCTI_TOKEN`                                                       | Yes       | The default admin token configured in the OpenCTI platform parameters file. |
+| `connector_id`<br/>`CONNECTOR_ID`                                                         | Yes       | A valid arbitrary `UUIDv4` that must be unique for this connector. |
+| `connector_name`<br/>`CONNECTOR_NAME`                                                     | Yes       | `Orange Cyberdefense Cyber Threat Intelligence` |
+| `update_existing_data`<br/>`CONNECTOR_UPDATE_EXISTING_DATA`                               | Yes       | Update data already ingested into the platform. |
+| `log_level`<br/>`CONNECTOR_LOG_LEVEL`                                                     | No        | Log output for the connector. Defaults to `INFO`. |
+| `import_datalake`<br/>`OCD_IMPORT_DATALAKE`                                               | Yes       | Set if you want to ingest indicators collections from the Datalake. Defaults to `true`. |
+| `import_threat_library`<br/>`OCD_IMPORT_THREAT_LIBRARY`                                   | Yes       | If `true`, at each run the latest 500 entries (Malware, Intrusion Set, Tools, Attack Patterns, Vulnerabilities, ...) from the [Datalake Threat Library](https://datalake.cert.orangecyberdefense.com/gui/threats-library) will be ingested. Defaults to `true`. |
+| `import_worldwatch`<br/>`OCD_IMPORT_WORLDWATCH`                                           | Yes       | If `true`, World Watch reports will be ingested into OpenCTI. Defaults to `true`. |
+| `datalake_env`<br/>`OCD_DATALAKE_ENV`                                                     | No        | ⚠️ Advanced setting* - Datalake environment to use: `prod` or `preprod`. Defaults to `prod`. |
+| `datalake_token`<br/>`OCD_DATALAKE_TOKEN`                                                 | No        | Long Term Token used to access Datalake API. Mandatory if `OCD_IMPORT_DATALAKE` or `OCD_IMPORT_THREAT_LIBRARY` set to `true`. |
+| `datalake_queries`<br/>`OCD_DATALAKE_QUERIES`                                             | No        | List of search `query_hash` for indicator's collection you want to ingest. Mandatory if `OCD_IMPORT_DATALAKE` set to `true`. |
+| ~~`create_observables`~~<br/>~~`OCD_CREATE_OBSERVABLES`~~                                 | No        | 🛑 Deprecated - Use `OCD_WORLDWATCH_START_DATE` instead. |
+| `datalake_create_observables`<br/>`OCD_DATALAKE_CREATE_OBSERVABLES`                       | No        | Create observables from indicators. Defaults to `true`. |
+| ~~`ignore_unscored_indicators`~~<br/>~~`OCD_IGNORE_UNSCORED_INDICATORS`~~                 | No        | 🛑 Deprecated - Use `OCD_DATALAKE_IGNORE_UNSCORED_INDICATORS` instead. |
+| `datalake_ignore_unscored_indicators`<br/>`OCD_DATALAKE_IGNORE_UNSCORED_INDICATORS`       | No        | If `true`, Datalake indicators that do not have any score will NOT be imported into OpenCTI. Defaults to `true`. |
+| ~~`ignore_whitelisted_indicators`~~<br/>~~`OCD_IGNORE_WHITELISTED_INDICATORS`~~           | No        | 🛑 Deprecated - Use `OCD_DATALAKE_IGNORE_WHITELISTED_INDICATORS` instead. |
+| `datalake_ignore_whitelisted_indicators`<br/>`OCD_DATALAKE_IGNORE_WHITELISTED_INDICATORS` | No        | If `true`, Datalake indicators that are whitelisted NOT be imported into OpenCTI. Defaults to `true`. |
+| ~~`fallback_score`~~<br/>~~`OCD_FALLBACK_SCORE`~~                                         | No        | 🛑 Deprecated - Use `OCD_DATALAKE_FALLBACK_SCORE` instead. |
+| `datalake_fallback_score`<br/>`OCD_DATALAKE_FALLBACK_SCORE`                               | No        | If `OCD_IGNORE_UNSCORED_INDICATORS` is set to `false`, this value will be used as a default for Datalake indicators without any score. Defaults to `0`. |
+| `datalake_add_tags_as_labels`<br/>`OCD_DATALAKE_ADD_TAGS_AS_LABELS`                       | No        | Whether to add Datalake tags as labels to the imported indicators. Defaults to `true`. |
+| `datalake_add_scores_as_labels`<br/>`OCD_DATALAKE_ADD_SCORES_AS_LABELS`                   | No        | Whether to add Datalake threat scores as labels to the imported indicators. Full explanation in [this section below](#about-scoring). Defaults to `true`. |
+| `datalake_add_score`<br/>`OCD_DATALAKE_ADD_SCORE`                                         | No        | Whether to add score to the imported indicators (overwrite existing). Full explanation in [this section below](#about-scoring). Defaults to `true`. |
+| `datalake_add_tlp`<br/>`OCD_DATALAKE_ADD_TLP`                                             | No        | Whether to add a TLP marking to the imported indicators (overwrite existing). Defaults to `true`. |
+| `datalake_add_extref`<br/>`OCD_DATALAKE_ADD_EXTREF`                                       | No        | Whether to add external references to the imported indicators. This typically adds a direct link to the matching Datalake threat and other external references stored in Datalake. Defaults to `true`. |
+| `datalake_add_summary`<br/>`OCD_DATALAKE_ADD_SUMMARY`                                     | No        | Whether to add a threat summary as a note to the imported indicators. It contains a breakdown of the score by threat categories, and a list of sources. Defaults to `true`. |
+| `datalake_add_related`<br/>`OCD_DATALAKE_ADD_RELATED`                                     | No        | Whether to import objects from the Threat Library related to imported indicators, such as malwares, campaigns, etc. Full explanation in [this section below](#about-related-entities). Defaults to `true`. |
+| `datalake_add_sightings`<br/>`OCD_DATALAKE_ADD_SIGHTINGS`                                 | No        | Whether to add sightings linked to indicators from positive sighting in Datalake. Full explanation in [this section below](#about-sightings). Defaults to `true`. |
+| `datalake_add_createdby`<br/>`OCD_DATALAKE_ADD_CREATEDBY`                                 | No        | Whether to add a reference to "Orange Cyberdefense" organization as author of OpenCTI objects. Defaults to `true`. |
+| `datalake_zip_file_path`<br/>`OCD_DATALAKE_ZIP_FILE_PATH`                                 | No        | ⚠️ Advanced setting* - Path were temporary ZIP files will be saved. Defaults to `/opt/opencti-connector-orange-cyberdefense/data`. |
+| `datalake_zip_file_delete`<br/>`OCD_DATALAKE_ZIP_FILE_DELETE`                             | No        | ⚠️ Advanced setting* - If `true`, temporary ZIP files will be deleted after processing. Defaults to `true`. |
+| ~~`curate_labels`~~<br/>~~`OCD_CURATE_LABELS`~~                                           | No        | 🛑 Deprecated - Use `OCD_DATALAKE_CURATE_LABELS` instead. |
+| `datalake_curate_labels`<br/>`OCD_DATALAKE_CURATE_LABELS`                                 | No        | ⚠️ Advanced setting* - Adapt Datalake CTI tags as STIX labels. Defaults to `true`. |
+| ~~`threat_actor_as_intrusion_set`~~<br/>~~`OCD_THREAT_ACTOR_AS_INTRUSION_SET`~~           | No        | 🛑 Deprecated - Use `OCD_DATALAKE_THREAT_ACTOR_AS_INTRUSION_SET` instead. |
+| `datalake_threat_actor_as_intrusion_set`<br/>`OCD_DATALAKE_THREAT_ACTOR_AS_INTRUSION_SET` | No        | ⚠️ Advanced setting* - Transform Threat Actor objects from Datalake to Intrusion Set objects. Defaults to `true`. |
+| ~~`import_worldwatch_api_key`~~<br/>~~`OCD_IMPORT_WORLDWATCH_API_KEY`~~                   | No        | 🛑 Deprecated - Use `OCD_WORLDWATCH_API_KEY` instead. |
+| `worldwatch_api_key`<br/>`OCD_WORLDWATCH_API_KEY`                                         | No        | WorldWatch API Key. Mandatory if `OCD_IMPORT_WORLDWATCH` set to `true`. |
+| ~~`import_worldwatch_start_date`~~<br/>~~`OCD_IMPORT_WORLDWATCH_START_DATE`~~             | No        | 🛑 Deprecated - Use `OCD_WORLDWATCH_START_DATE` instead. |
+| `worldwatch_start_date`<br/>`OCD_WORLDWATCH_START_DATE`                                   | No        | Start date for import of World Watch reports. Defaults to `2022-01-01`. Mandatory if `OCD_IMPORT_WORLDWATCH` set to `true`. |
+| `worldwatch_import_indicators`<br/>`OCD_WORLDWATCH_IMPORT_INDICATORS`                     | No        | Whether to import indicators from Datalake related to imported reports. Full explanation in [this section below](#related-indicators-and-entities). Defaults to `true`. |
+| `worldwatch_import_threat_entities`<br/>`OCD_WORLDWATCH_IMPORT_THREAT_ENTITIES`           | No        | Whether to import objects from the Threat Library related to imported reports, such as malwares, campaigns, etc. Full explanation in [this section below](#related-indicators-and-entities). Defaults to `true`. |
+| `interval`<br/>`OCD_INTERVAL`                                                             | Yes       | Time interval in minutes defining the frequency of the data ingestion process. Minimum recommended `30`. Defaults to `30`. |
+| `reset_state`<br/>`OCD_RESET_STATE`                                                       | No        | ⚠️ Advanced setting* - Force the use of the start date from the config instead of getting the state saved in OpenCTI. Full explanation in [this section below](#about-connector-state). Defaults to `false`. |
 
 Parameters prefixed by "⚠️ Advanced setting" are intended for users with very specific needs or developers. Do not edit these values if you're not 100% sure to understand the implications. Most of the time, default values will work just fine, so we recommend you omit these values from your configuration.
 
