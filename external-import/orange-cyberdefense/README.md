@@ -44,6 +44,7 @@ Other prerequisites for using this connector includes:
 - An operational OpenCTI on-prem or SaaS instance.
 - An OpenCTI API token with write permissions.
   - As highlighted [in the official documentation regarding connectors](https://docs.opencti.io/latest/deployment/connectors/), a **dedicated** user account for each connector is recommended.
+  - Make sure to understand OpenCTI's documentation page about [reliability and confidence](https://docs.opencti.io/latest/usage/reliability-confidence/) and choose a confidence level according to your needs.
   - With sufficient permissions, an user's API Token can be found in: _Gear Icon_ > Security > Users > _User details_.
 - An active **Managed Threat Intelligence** (Datalake) subscription.
 - A valid Datalake API "long term" token.
@@ -57,12 +58,12 @@ Other prerequisites for using this connector includes:
 
 1. Copy the content under the `services:` section of the `docker-compose.yml` example file into your main OpenCTI docker configuration.
 2. Replace the value of `CONNECTOR_ID` with a randomly generated UUIDv4 (you can find UUID generators online).
-3. Replace the value of `OCD_IMPORT_DATALAKE`, `OCD_IMPORT_THREAT_LIBRARY` and `OCD_IMPORT_WORLDWATCH` to enable the modules you want. Each one of these import types are detailed below.
-4. If required by enabled modules, replace the value of `OCD_DATALAKE_TOKEN` with your Datalake API token.
-5. If required by enabled modules, replace the value of `OCD_WORLDWATCH_TOKEN` with your Datalake API token.
-6. Replace or add other variables to customize the behavior of this connector according to your needs. See [this section below](#environment-variables) for a full list of supported environment variable.
-7. Reload the connector's container configuration. If using Docker compose, this can be done using the `docker compose up -d` command.
-
+3. Replace the value of `OPENCTI_TOKEN` with the token of the dedicated OpenCTI user you created for this integration (see [prerequisites](#prerequisites)).
+4. Replace the value of `OCD_IMPORT_DATALAKE`, `OCD_IMPORT_THREAT_LIBRARY` and `OCD_IMPORT_WORLDWATCH` to enable the modules you want. Each one of these import types are detailed below.
+5. If required by enabled modules, replace the value of `OCD_DATALAKE_TOKEN` with your Datalake API token. The account must have the Datalake `bulk_search` permission.
+6. If required by enabled modules, replace the value of `OCD_WORLDWATCH_TOKEN` with your Datalake API token.
+7. Replace or add other variables to customize the behavior of this connector according to your needs. See [this section below](#environment-variables) for a full list of supported environment variable.
+8. Reload the connector's container configuration. If using Docker compose, this can be done using the `docker compose up -d` command.
 
 ### Troubleshooting
 
@@ -87,7 +88,6 @@ Other prerequisites for using this connector includes:
 | `opencti_token`<br/>`OPENCTI_TOKEN`                                                       | Yes       | The default admin token configured in the OpenCTI platform parameters file. |
 | `connector_id`<br/>`CONNECTOR_ID`                                                         | Yes       | A valid arbitrary `UUIDv4` that must be unique for this connector. |
 | `connector_name`<br/>`CONNECTOR_NAME`                                                     | Yes       | `Orange Cyberdefense Cyber Threat Intelligence` |
-| `update_existing_data`<br/>`CONNECTOR_UPDATE_EXISTING_DATA`                               | Yes       | Update data already ingested into the platform. |
 | `log_level`<br/>`CONNECTOR_LOG_LEVEL`                                                     | No        | Log output for the connector. Defaults to `INFO`. |
 | `import_datalake`<br/>`OCD_IMPORT_DATALAKE`                                               | Yes       | Set if you want to ingest indicators collections from the Datalake. Defaults to `true`. |
 | `import_threat_library`<br/>`OCD_IMPORT_THREAT_LIBRARY`                                   | Yes       | If `true`, at each run the latest 500 entries (Malware, Intrusion Set, Tools, Attack Patterns, Vulnerabilities, ...) from the [Datalake Threat Library](https://datalake.cert.orangecyberdefense.com/gui/threats-library) will be ingested. Defaults to `true`. |

@@ -8,7 +8,6 @@ connector:
   type: 'EXTERNAL_IMPORT'
   name: 'Orange Cyberdefense Cyber Threat Intelligence'
   scope: 'identity,attack-pattern,intrusion-set,malware,tool,report,location,vulnerability,indicator,campaign,relationship'
-  update_existing_data: true
   log_level: 'info'
 
 ocd:

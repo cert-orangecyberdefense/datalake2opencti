@@ -216,12 +216,6 @@ class OrangeCyberDefense:
             config
         )  # Set config, then overwrite some with env variables
 
-        self.update_existing_data = get_config_variable(
-            "CONNECTOR_UPDATE_EXISTING_DATA",
-            ["connector", "update_existing_data"],
-            config,
-        )
-
         # OCD_IMPORT_DATALAKE
         self.ocd_import_datalake = get_config_variable(
             "OCD_IMPORT_DATALAKE", ["ocd", "import_datalake"], config, default=True
@@ -1019,7 +1013,6 @@ class OrangeCyberDefense:
                     work_id = self._log_and_initiate_work("World Watch")
                     self.helper.send_stix2_bundle(
                         stix2.Bundle(objects=batch_objects, allow_custom=True).serialize(),
-                        update=self.update_existing_data,
                         work_id=work_id,
                     )
                     self._log_and_terminate_work(work_id)
@@ -1046,7 +1039,6 @@ class OrangeCyberDefense:
             work_id = self._log_and_initiate_work("World Watch")
             self.helper.send_stix2_bundle(
                 stix2.Bundle(objects=batch_objects, allow_custom=True).serialize(),
-                update=self.update_existing_data,
                 work_id=work_id,
             )
             self._log_and_terminate_work(work_id)
@@ -1150,7 +1142,6 @@ class OrangeCyberDefense:
             # Send the created bundle
             self.helper.send_stix2_bundle(
                 stix2.Bundle(objects=objects, allow_custom=True).serialize(),
-                update=self.update_existing_data,
                 work_id=work_id,
             )
             self._log_and_terminate_work(work_id)
@@ -1200,7 +1191,6 @@ class OrangeCyberDefense:
             ]
             self.helper.send_stix2_bundle(
                 stix2.Bundle(objects=threat_stix_bundle["objects"], allow_custom=True).serialize(),
-                update=self.update_existing_data,
                 work_id=work_id,
             )
             self._log_and_terminate_work(work_id)
