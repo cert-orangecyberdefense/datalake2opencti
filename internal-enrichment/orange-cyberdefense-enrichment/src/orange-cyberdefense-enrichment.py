@@ -264,8 +264,6 @@ class OrangeCyberdefenseEnrichment:
             if len(scores) > 0:
                 object["x_opencti_score"] = max(scores)
 
-        if "created_by_ref" not in object:
-            object["created_by_ref"] = self.identity["standard_id"]
         if "external_references" in object:
             external_references = []
             for external_reference in object["external_references"]:
@@ -282,17 +280,13 @@ class OrangeCyberdefenseEnrichment:
         if object["type"] == "threat-actor" and self.ocd_enrich_threat_actor_as_intrusion_set:
             object["type"] = "intrusion-set"
             object["id"] = object["id"].replace("threat-actor", "intrusion-set")
-        if object["type"] == "sector":
-            object["type"] = "identity"
-            object["identity_class"] = "class"
-            object["id"] = object["id"].replace("sector", "identity")
         if object["type"] == "relationship":
-            object["source_ref"] = object["source_ref"].replace("sector", "identity")
-            object["target_ref"] = object["target_ref"].replace("sector", "identity")
             if self.ocd_enrich_threat_actor_as_intrusion_set:
                 object["source_ref"] = object["source_ref"].replace("threat-actor", "intrusion-set")
                 object["target_ref"] = object["target_ref"].replace("threat-actor", "intrusion-set")
         if object["type"] == "indicator" and self.ocd_enrich_add_scores_as_labels:
+            object["pattern"] = object["pattern"].replace("[x-phone-number:international_phone_number", "[phone-number:value")
+            object["pattern"] = object["pattern"].replace("[x-crypto:value", "[cryptocurrency-wallet:value")
             threat_scores = object.get("x_datalake_score", {})
             for threat_type, score in threat_scores.items():
                 ranged_score = _get_ranged_score(score)
