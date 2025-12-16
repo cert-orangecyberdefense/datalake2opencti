@@ -578,10 +578,11 @@ class OrangeCyberDefense:
             content=technical_md,
             created=creation_date,
             modified=indicator_object["modified"],
-            created_by_ref=indicator_object["created_by_ref"],
             object_marking_refs=[self.marking["standard_id"]],
             object_refs=[indicator_object.get("id")],
         )
+        if self.ocd_datalake_add_createdby:
+            note_stix["created_by_ref"] = indicator_object["created_by_ref"]
         return note_stix
 
     def _get_ranged_scored(self, score: int):
@@ -627,7 +628,7 @@ class OrangeCyberDefense:
                 object["x_datalake_atom_type"]
             ]
         if not self.ocd_datalake_add_createdby:
-            del object["created_by_ref"]
+            object.pop("created_by_ref", None)
         if "external_references" in object and self.ocd_datalake_add_extref:
             external_references = []
             for external_reference in object["external_references"]:
@@ -1157,13 +1158,16 @@ class OrangeCyberDefense:
         }
 
         with ThreadPoolExecutor() as executor:
+            futures = []
             for query in self.ocd_datalake_queries:
-                executor.submit(
+                futures.append(executor.submit(
                     self.process_query,
                     query,
                     filter_by_last_updated_date_query_body,
-                )
+                ))
                 time.sleep(2)
+            for f in futures:
+                f.result() # This raise errors that could occur in threads
 
         # Update the state if 'modified' field is present
         current_state["datalake"] = (
