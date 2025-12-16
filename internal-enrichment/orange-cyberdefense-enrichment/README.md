@@ -39,51 +39,53 @@ Other prerequisites for using this connector includes:
 ### Installation
 
 1. Copy the content under the `services:` section of the `docker-compose.yml` example file into your main OpenCTI docker configuration.
-2. Replace the value of `CONNECTOR_ID` with a randomly generated UUIDv4 (you can find UUID generators online).
-3. Replace the value of `CONNECTOR_AUTO` with `true` if you want enrichment to trigger on new observables creation (defaults to `false` which means manual enrichment only).
-4. Replace the value of `OCD_ENRICH_DATALAKE_TOKEN` with your Datalake API token.
-5. Replace or add other variables to customize the behavior of this connector according to your needs. See [this section below](#environment-variables) for a full list of supported environment variable.
-6. Reload the connector's container configuration. If using Docker compose, this can be done using the `docker compose up -d` command.
+2. Replace the value of `OPENCTI_TOKEN` with the token of the dedicated OpenCTI user you created for this integration (see [prerequisites](#prerequisites)).
+3. Replace the value of `CONNECTOR_ID` with a randomly generated UUIDv4 (you can find UUID generators online).
+4. Replace the value of `CONNECTOR_AUTO` with `true` if you want enrichment to trigger on new observables creation (defaults to `false` which means manual enrichment only).
+5. Replace the value of `OCD_ENRICH_DATALAKE_TOKEN` with your Datalake API token.
+6. Replace or add other variables to customize the behavior of this connector according to your needs. See [this section below](#environment-variables) for a full list of supported environment variable.
+7. Reload the connector's container configuration. If using Docker compose, this can be done using the `docker compose up -d` command.
 
 ### Troubleshooting
 
 - Go to the connector's status page in OpenCTI: _Database Icon_ > Ingestion > Connectors > Orange Cyberdefense CTI Enrichment.
   - If it does not exists, there is probably an issue with your docker configuration.
   - Check that connector is marked as "Active".
-  - Compare the value of "Automatic trigger" and the "CONNECTOR_AUTO" environment variable
-- Check whether the connector's container exists and it's uptime
-  - `docker ps` if using Docker
-  - `kubectl get pod -n <namespace>` if using Kubernetes
-- Check the logs of the container running the connector
-  - `docker logs -f <container_id>` if using Docker
-  - `kubectl logs <pod_name> -n <namespace>` if using Kubernetes
-- If you have a valid Datalake subscription, contact us, we're here to help!
+  - Compare the value of "Automatic trigger" and the "CONNECTOR_AUTO" environment variable.
+- Check whether the connector's container exists and it's uptime.
+  - `docker ps` if using Docker.
+  - `kubectl get pod -n <namespace>` if using Kubernetes.
+- Check the logs of the container running the connector.
+  - `docker logs -f <container_id>` if using Docker.
+  - `kubectl logs <pod_name> -n <namespace>` if using Kubernetes.
+- Contact us, we're here to help!
 
 ## Usage
 
 ### Environment variables
 
-| Parameter                                  | Docker envvar                              | Mandatory | Description |
-|--------------------------------------------|--------------------------------------------|-----------|-------------|
-| `opencti.url`                              | `OPENCTI_URL`                              | Yes       | The OpenCTI platform URL. |
-| `opencti.token`                            | `OPENCTI_TOKEN`                            | Yes       | The OpenCTI API token of the user who represents the connector in the OpenCTI platform. |
-| `connector.id`                             | `CONNECTOR_ID`                             | Yes        | A unique UUIDv4 identifier for this connector instance. |
-| `connector.auto`                           | `CONNECTOR_AUTO`                           | Yes       | Whether to automatically enrich every newly created observable. Defaults to `false`. |
-| `connector.name`                           | `CONNECTOR_NAME`                           | No        | Name of the connector. Defaults to `Orange Cyberdefense CTI Enrichment`. |
-| `connector.scope`                          | `CONNECTOR_SCOPE`                          | No        | OpenCTI observable types for which to enable the enrichment. Defaults to all supported types: `IPv4-Addr,IPv6-Addr,Domain-Name,URL,Email-Addr,Autonomous-System,X509-Certificate,Cryptocurrency-Wallet,StixFile,Phone-Number`. |
-| `connector.log_level`                      | `CONNECTOR_LOG_LEVEL`                      | No        | Determines the verbosity of the logs. Defaults to `info`. |
-| `ocd_enrich.datalake_env`                  | `OCD_ENRICH_DATALAKE_ENV`                  | No        | ⚠️ Advanced setting* - Datalake environment to use: `prod` or `preprod`. Defaults to `prod`. |
-| `ocd_enrich.datalake_token`                | `OCD_ENRICH_DATALAKE_TOKEN`                | Yes       | Long Term Token used to access Orange Cyberdefense Datalake API. |
-| `ocd_enrich.add_tags_as_labels`            | `OCD_ENRICH_ADD_TAGS_AS_LABELS`            | No        | Whether to add Datalake tags as labels to the enriched observable. Defaults to `true`. |
-| `ocd_enrich.add_scores_as_labels`          | `OCD_ENRICH_ADD_SCORES_AS_LABELS`          | No        | Whether to add Datalake threat scores as labels to the enriched observable. Full explanation in [this section below](#about-scoring). Defaults to `true`. |
-| `ocd_enrich.add_score`                     | `OCD_ENRICH_ADD_SCORE`                     | No        | Whether to add score to the enriched observable (overwrite existing). Full explanation in [this section below](#about-scoring). Defaults to `true`. |
-| `ocd_enrich.add_extref`                    | `OCD_ENRICH_ADD_EXTREF`                    | No        | Whether to add external references to the enriched observable. This typically adds a direct link to the matching Datalake threat and other external references stored in Datalake. Defaults to `true`. |
-| `ocd_enrich.add_summary`                   | `OCD_ENRICH_ADD_SUMMARY`                   | No        | Whether to add a threat summary as a note to the enriched observable. It contains a breakdown of the score by threat categories, and a list of sources. Defaults to `true`. |
-| `ocd_enrich.add_related`                   | `OCD_ENRICH_ADD_RELATED`                   | No        | Whether to import objects from the Threat Library related to this observable, such as indicators, malwares, etc. Full explanation in [this section below](#about-related-entities). Defaults to `true`. |
-| `ocd_enrich.max_tlp`                       | `OCD_ENRICH_MAX_TLP`                       | No        | Do not send any data to Datalake if the TLP of the observable is greater than this value. Defaults to `TLP:AMBER`. |
-| `ocd_enrich.threat_actor_as_intrusion_set` | `OCD_ENRICH_THREAT_ACTOR_AS_INTRUSION_SET` | No        | ⚠️ Advanced setting* - Whether to transform Datalake "Threat Actor" objects into "Intrusion Set" objects, which makes more sense in the STIX format and OpenCTI. Defaults to `true`. |
+| Parameter / Docker environment variables                                                  | Mandatory | Description |
+|-------------------------------------------------------------------------------------------|-----------|-------------|
+| `opencti.url`<br/>`OPENCTI_URL`                                                           | Yes       | The OpenCTI platform URL. |
+| `opencti.token`<br/>`OPENCTI_TOKEN`                                                       | Yes       | The OpenCTI API token of the user who represents the connector in the OpenCTI platform. |
+| `connector.id`<br/>`CONNECTOR_ID`                                                         | Yes       | A unique UUIDv4 identifier for this connector instance. |
+| `connector.auto`<br/>`CONNECTOR_AUTO`                                                     | Yes       | Whether to automatically enrich every newly created observable. Defaults to `false`. |
+| `connector.name`<br/>`CONNECTOR_NAME`                                                     | No        | Name of the connector. Defaults to `Orange Cyberdefense CTI Enrichment`. |
+| `connector.scope`<br/>`CONNECTOR_SCOPE`                                                   | No        | OpenCTI observable types for which to enable the enrichment. Defaults to all supported types: `IPv4-Addr,IPv6-Addr,Domain-Name,URL,Email-Addr,Autonomous-System,X509-Certificate,Cryptocurrency-Wallet,StixFile,Phone-Number`. |
+| `connector.log_level`<br/>`CONNECTOR_LOG_LEVEL`                                           | No        | Determines the verbosity of the logs. Defaults to `info`. |
+| `ocd_enrich.datalake_env`<br/>`OCD_ENRICH_DATALAKE_ENV`                                   | No        | ⚠️ Advanced setting* - Datalake environment to use: `prod` or `preprod`. Defaults to `prod`. |
+| `ocd_enrich.datalake_token`<br/>`OCD_ENRICH_DATALAKE_TOKEN`                               | Yes       | Long Term Token used to access Orange Cyberdefense Datalake API. |
+| `ocd_enrich.add_tags_as_labels`<br/>`OCD_ENRICH_ADD_TAGS_AS_LABELS`                       | No        | Whether to add Datalake tags as labels to the enriched observable. Defaults to `true`. |
+| `ocd_enrich.add_scores_as_labels`<br/>`OCD_ENRICH_ADD_SCORES_AS_LABELS`                   | No        | Whether to add Datalake threat scores as labels to the enriched observable. Full explanation in [this section below](#about-scoring). Defaults to `true`. |
+| `ocd_enrich.add_score`<br/>`OCD_ENRICH_ADD_SCORE`                                         | No        | Whether to add score to the enriched observable (overwrite existing). Full explanation in [this section below](#about-scoring). Defaults to `true`. |
+| `ocd_enrich.add_extref`<br/>`OCD_ENRICH_ADD_EXTREF`                                       | No        | Whether to add external references to the enriched observable. This typically adds a direct link to the matching Datalake threat and other external references stored in Datalake. Defaults to `true`. |
+| `ocd_enrich.add_summary`<br/>`OCD_ENRICH_ADD_SUMMARY`                                     | No        | Whether to add a threat summary as a note to the enriched observable. It contains a breakdown of the score by threat categories, and a list of sources. Defaults to `true`. |
+| `ocd_enrich.add_related`<br/>`OCD_ENRICH_ADD_RELATED`                                     | No        | Whether to import objects from the Threat Library related to this observable, such as indicators, malwares, etc. Full explanation in [this section below](#about-related-entities). Defaults to `true`. |
+| `ocd_enrich.add_sightings`<br/>`OCD_ENRICH_ADD_SIGHTINGS`                                 | No        | Whether to import positive sightings from Datalake. Full explanation in [this section below](#about-sightings). Defaults to `true`. |
+| `ocd_enrich.max_tlp`<br/>`OCD_ENRICH_MAX_TLP`                                             | No        | Do not send any data to Datalake if the TLP of the observable is greater than this value. Defaults to `TLP:AMBER`. |
+| `ocd_enrich.threat_actor_as_intrusion_set`<br/>`OCD_ENRICH_THREAT_ACTOR_AS_INTRUSION_SET` | No        | ⚠️ Advanced setting* - Whether to transform Datalake "Threat Actor" objects into "Intrusion Set" objects, which makes more sense in the STIX format and OpenCTI. Defaults to `true`. |
 
-Parameters prefixed by "⚠️ Advanced setting" are intended for experienced users with specific needs. Do not edit these values if you're not 100% sure to understand the implications. Most of the time, default values will work just fine, so we recommend you omit these values from your configuration.
+Parameters prefixed by "⚠️ Advanced setting" are intended for users with very specific needs or developers. Do not edit these values if you're not 100% sure to understand the implications. Most of the time, default values will work just fine, so we recommend you omit these values from your configuration.
 
 ### About scoring
 
@@ -116,3 +118,24 @@ When the `OCD_ENRICH_ADD_RELATED` flag is set to `true`, the following will happ
 - These threat entities will be linked to the `Indicator` entity through a relationship.
 
 *If `OCD_ENRICH_THREAT_ACTOR_AS_INTRUSION_SET` is `true`, an `Intrusion Set` instead of a `Threat Actor` will be created when a `Threat Actor` threat entity is found on Datalake. This is the default as it makes more sense from a STIX and OpenCTI point of view.
+
+### About sightings
+
+Not only Datalake, but OpenCTI and the STIX standard all supports the concept of "sightings", but all three of them have their specificities.
+
+- Datalake sightings
+  - Are linked to a threat/atom
+  - Are positive, negative or neutral
+  - Can have 2 different sightings for the same source/target
+  - Supports multiple "where_sighted_refs" targets
+- OpenCTI sightings
+  - Are linked to an indicator or an observable
+  - Are positive or negative (STIX custom property "x_opencti_negative")
+  - Cannot have 2 different sightings for the same source/target
+  - Does not support multiple "where_sighted_refs" targets
+- STIX sightings
+  - The most basic one, the other two must AT LEAST be compliant with the standard
+  - Has no concept of positive/negative
+  - Supports multiple "where_sighted_refs" targets
+
+Therefore, what can be seen as multiple positive sightings for a single indicator on Datalake might appear as one sighting with a longer observation period. Please also note that currently, only positive sightings are exported to OpenCTI.
