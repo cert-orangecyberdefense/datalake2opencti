@@ -218,6 +218,13 @@ class OrangeCyberdefenseEnrichment:
             default=True,
         )
 
+        self.ocd_enrich_add_sightings = get_config_variable(
+            "OCD_ENRICH_ADD_SIGHTINGS",
+            ["ocd_enrich", "add_sightings"],
+            config,
+            default=True,
+        )
+
         self.max_tlp = get_config_variable(
             "OCD_ENRICH_MAX_TLP", ["ocd_enrich", "max_tlp"], config, default="TLP:AMBER"
         )
@@ -294,6 +301,8 @@ class OrangeCyberdefenseEnrichment:
                 if "labels" not in object:
                     object["labels"] = []
                 object["labels"].append(new_label)
+        if object["type"] == "sighting" and not self.ocd_enrich_add_sightings:
+            return None
         return object
 
     def _generate_observable_note(self, indicator_object, stix_entity):
@@ -350,7 +359,10 @@ class OrangeCyberdefenseEnrichment:
         for object in data["objects"]:
             if object["type"] == "indicator":
                 indicator_object = object
-            related_objects.append(self._process_object(object))
+            processed_object = self._process_object(object)
+            if processed_object is None:
+                continue
+            related_objects.append(processed_object)
 
         labels = []
         max_score = -1

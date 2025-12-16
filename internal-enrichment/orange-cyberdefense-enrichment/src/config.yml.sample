@@ -4,7 +4,6 @@ opencti:
 
 connector:
   id: 'ChangeMe'
-  type: 'INTERNAL_ENRICHMENT'
   auto: false
   name: 'Orange Cyberdefense CTI Enrichment'
   scope: 'IPv4-Addr,IPv6-Addr,Domain-Name,URL,Email-Addr,Autonomous-System,X509-Certificate,Cryptocurrency-Wallet,StixFile,Phone-Number'
@@ -12,7 +11,7 @@ connector:
 
 
 ocd_enrich:
-  datalake_env: 'ChangeMe'
+  datalake_env: 'prod'
   datalake_token: 'ChangeMe'
   add_tags_as_labels: true
   add_scores_as_labels: true
@@ -20,5 +19,6 @@ ocd_enrich:
   add_extref: true
   add_summary: true
   add_related: true
+  add_sightings: true
   max_tlp: 'TLP:AMBER'
   threat_actor_as_intrusion_set: true
