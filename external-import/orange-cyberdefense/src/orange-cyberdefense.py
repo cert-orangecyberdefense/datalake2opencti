@@ -646,13 +646,7 @@ class OrangeCyberDefense:
         if object["type"] == "threat-actor" and self.ocd_datalake_threat_actor_as_intrusion_set:
             object["type"] = "intrusion-set"
             object["id"] = object["id"].replace("threat-actor", "intrusion-set")
-        if object["type"] == "sector":
-            object["type"] = "identity"
-            object["identity_class"] = "class"
-            object["id"] = object["id"].replace("sector", "identity")
         if object["type"] == "relationship":
-            object["source_ref"] = object["source_ref"].replace("sector", "identity")
-            object["target_ref"] = object["target_ref"].replace("sector", "identity")
             if self.ocd_datalake_threat_actor_as_intrusion_set:
                 object["source_ref"] = object["source_ref"].replace("threat-actor", "intrusion-set")
                 object["target_ref"] = object["target_ref"].replace("threat-actor", "intrusion-set")
