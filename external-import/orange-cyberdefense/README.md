@@ -4,7 +4,7 @@
 
 This connector allows you to ingest Orange Cyberdefense Datalake indicators to OpenCTI. Datalake is a subscription based CTI platform powered by [Orange Cyberdefense](https://www.orangecyberdefense.com).
 
-## Supported observable types
+## Supported entities
 
 ### OpenCTI entities
 
@@ -57,8 +57,8 @@ Other prerequisites for using this connector includes:
 ### Installation
 
 1. Copy the content under the `services:` section of the `docker-compose.yml` example file into your main OpenCTI docker configuration.
-2. Replace the value of `CONNECTOR_ID` with a randomly generated UUIDv4 (you can find UUID generators online).
-3. Replace the value of `OPENCTI_TOKEN` with the token of the dedicated OpenCTI user you created for this integration (see [prerequisites](#prerequisites)).
+2. Replace the value of `OPENCTI_TOKEN` with the token of the dedicated OpenCTI user you created for this integration (see [prerequisites](#prerequisites)).
+3. Replace the value of `CONNECTOR_ID` with a randomly generated UUIDv4 (you can find UUID generators online).
 4. Replace the value of `OCD_IMPORT_DATALAKE`, `OCD_IMPORT_THREAT_LIBRARY` and `OCD_IMPORT_WORLDWATCH` to enable the modules you want. Each one of these import types are detailed below.
 5. If required by enabled modules, replace the value of `OCD_DATALAKE_TOKEN` with your Datalake API token. The account must have the Datalake `bulk_search` permission.
 6. If required by enabled modules, replace the value of `OCD_WORLDWATCH_TOKEN` with your Datalake API token.
@@ -110,7 +110,7 @@ Other prerequisites for using this connector includes:
 | `datalake_add_extref`<br/>`OCD_DATALAKE_ADD_EXTREF`                                       | No        | Whether to add external references to the imported indicators. This typically adds a direct link to the matching Datalake threat and other external references stored in Datalake. Defaults to `true`. |
 | `datalake_add_summary`<br/>`OCD_DATALAKE_ADD_SUMMARY`                                     | No        | Whether to add a threat summary as a note to the imported indicators. It contains a breakdown of the score by threat categories, and a list of sources. Defaults to `true`. |
 | `datalake_add_related`<br/>`OCD_DATALAKE_ADD_RELATED`                                     | No        | Whether to import objects from the Threat Library related to imported indicators, such as malwares, campaigns, etc. Full explanation in [this section below](#about-related-entities). Defaults to `true`. |
-| `datalake_add_sightings`<br/>`OCD_DATALAKE_ADD_SIGHTINGS`                                 | No        | Whether to add sightings linked to indicators from positive sighting in Datalake. Full explanation in [this section below](#about-sightings). Defaults to `true`. |
+| `datalake_add_sightings`<br/>`OCD_DATALAKE_ADD_SIGHTINGS`                                 | No        | Whether to import positive sightings from Datalake. Full explanation in [this section below](#about-sightings). Defaults to `true`. |
 | `datalake_add_createdby`<br/>`OCD_DATALAKE_ADD_CREATEDBY`                                 | No        | Whether to add a reference to "Orange Cyberdefense" organization as author of OpenCTI objects. Defaults to `true`. |
 | `datalake_zip_file_path`<br/>`OCD_DATALAKE_ZIP_FILE_PATH`                                 | No        | ⚠️ Advanced setting* - Path were temporary ZIP files will be saved. Defaults to `/opt/opencti-connector-orange-cyberdefense/data`. |
 | `datalake_zip_file_delete`<br/>`OCD_DATALAKE_ZIP_FILE_DELETE`                             | No        | ⚠️ Advanced setting* - If `true`, temporary ZIP files will be deleted after processing. Defaults to `true`. |
@@ -121,7 +121,7 @@ Other prerequisites for using this connector includes:
 | ~~`import_worldwatch_api_key`~~<br/>~~`OCD_IMPORT_WORLDWATCH_API_KEY`~~                   | No        | 🛑 Deprecated - Use `OCD_WORLDWATCH_API_KEY` instead. |
 | `worldwatch_api_key`<br/>`OCD_WORLDWATCH_API_KEY`                                         | No        | WorldWatch API Key. Mandatory if `OCD_IMPORT_WORLDWATCH` set to `true`. |
 | ~~`import_worldwatch_start_date`~~<br/>~~`OCD_IMPORT_WORLDWATCH_START_DATE`~~             | No        | 🛑 Deprecated - Use `OCD_WORLDWATCH_START_DATE` instead. |
-| `worldwatch_start_date`<br/>`OCD_WORLDWATCH_START_DATE`                                   | No        | Start date for import of World Watch reports. Defaults to `2022-01-01`. Mandatory if `OCD_IMPORT_WORLDWATCH` set to `true`. |
+| `worldwatch_start_date`<br/>`OCD_WORLDWATCH_START_DATE`                                   | No        | Start date for import of World Watch reports. Defaults to `2025-01-01`. Mandatory if `OCD_IMPORT_WORLDWATCH` set to `true`. |
 | `worldwatch_import_indicators`<br/>`OCD_WORLDWATCH_IMPORT_INDICATORS`                     | No        | Whether to import indicators from Datalake related to imported reports. Full explanation in [this section below](#related-indicators-and-entities). Defaults to `true`. |
 | `worldwatch_import_threat_entities`<br/>`OCD_WORLDWATCH_IMPORT_THREAT_ENTITIES`           | No        | Whether to import objects from the Threat Library related to imported reports, such as malwares, campaigns, etc. Full explanation in [this section below](#related-indicators-and-entities). Defaults to `true`. |
 | `interval`<br/>`OCD_INTERVAL`                                                             | Yes       | Time interval in minutes defining the frequency of the data ingestion process. Minimum recommended `30`. Defaults to `30`. |
@@ -137,6 +137,7 @@ Notes:
 - When enabling this import type, the variables `OCD_DATALAKE_TOKEN` and `OCD_DATALAKE_QUERIES` are also required.
 - Although the import is based on a query hash, an additional filter is added to prevent overloaded queries and duplicate imports. This results in the exclusion of indicators older than n seconds, where `n = OCD_INTERVAL + 15 * 60`.
   - Because of this, it make take a few days for the data to be representative.
+  - This additional time constraint is only applied when the main query operator is 'AND', which is the default.
 - Parameters related to this import type (starting with `OCD_DATALAKE_`) also applies for indicators ingested by World Watch imports (see below in [this section dedicated to World Watch imports](#world-watch-import)).
 
 #### About scoring
@@ -261,7 +262,7 @@ This is an example of what the state could looks like:
 
 ## Screenshots
 
-### WorldWatch reports in OpenCTI
+### World Watch reports in OpenCTI
 ![image](./media/Report.png)
 ![image](./media/Report_2.png)
 
