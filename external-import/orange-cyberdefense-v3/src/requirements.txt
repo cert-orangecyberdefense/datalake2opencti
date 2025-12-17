@@ -1,0 +1,3 @@
+pycti==6.7.20
+datalake-scripts==3.0.0rc4
+html2text==2025.4.15
