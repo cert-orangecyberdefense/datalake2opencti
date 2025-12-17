@@ -1,6 +1,6 @@
 services:
-  connector-orange-cyberdefense-enrichment:
-    image: opencti/connector-orange-cyberdefense-enrichment:rolling
+  connector-orange-cyberdefense-enrichment-v3:
+    image: opencti/connector-orange-cyberdefense-enrichment-v3:rolling
     environment:
       - OPENCTI_URL=http://opencti:8080
       - OPENCTI_TOKEN=ChangeMe
