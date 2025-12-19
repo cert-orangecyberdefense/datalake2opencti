@@ -146,13 +146,13 @@ For each unique IOC, Orange Cyberdefense Datalake currently defines a total of 9
 
 To handle this, when a match is found:
 - When the `OCD_DATALAKE_ADD_SCORE` flag is set to `true`:
-  - We set the OpenCTI observable's score to the **highest** score among Datalake threat scores.
-  - For a given threat, **if every Datalake threat score is empty**, the OpenCTI observable's **score is left unchanged**.
+  - We set the OpenCTI indicator's score to the **highest** score among Datalake threat scores.
+  - For a given threat, **if every Datalake threat score is empty**, the OpenCTI indicator's **score is left unchanged**.
 - When the `OCD_DATALAKE_ADD_SCORES_AS_LABELS` flag is set to `true`:
   - For a given threat, **for each threat score that is not empty** in Datalake, we add a label corresponding to **the score range of that type**. These labels operates **using a step of 10** rather than displaying the exact score.
   - Example: If a given threat has a score of `87` in `Malware`, `40` in `Spam` and nothing in the others, labels `dtl_malware_80` and `dtl_spam_40` will be added.
 - When the `OCD_DATALAKE_ADD_SUMMARY` flag is set to `true`:
-  - The full list of threat scores is also available as a table in a note attached to the OpenCTI observable and indicator.
+  - The full list of threat scores is also available as a table in a note attached to the OpenCTI indicator.
 
 #### About query hashes
 
