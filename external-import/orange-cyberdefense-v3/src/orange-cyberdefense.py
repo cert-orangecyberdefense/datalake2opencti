@@ -679,8 +679,17 @@ class OrangeCyberDefense:
         )
 
         try:
+            indicators_only = None
+            indicators_and_threat_entities_only = None
+            if self.ocd_worldwatch_import_threat_entities:
+                indicators_and_threat_entities_only = True
+            else:
+                indicators_only = True
             task = self.datalake_instance.BulkSearch.create_task(
-                for_stix_export=True, query_hash=datalake_query_hash
+                for_stix_export=True,
+                query_hash=datalake_query_hash,
+                indicators_only=indicators_only,
+                indicators_and_threat_entities_only=indicators_and_threat_entities_only
             )
         except Exception as e:
             self.helper.log_error(
@@ -1072,8 +1081,18 @@ class OrangeCyberDefense:
 
         # Create the bulk search task
         try:
+            indicators_only = None
+            indicators_and_threat_entities_only = None
+            if not self.ocd_datalake_add_sightings:
+                if self.ocd_datalake_add_related:
+                    indicators_and_threat_entities_only = True
+                else:
+                    indicators_only = True
             task = datalake_instance.BulkSearch.create_task(
-                for_stix_export=True, query_body=query_body
+                for_stix_export=True,
+                query_body=query_body,
+                indicators_only=indicators_only,
+                indicators_and_threat_entities_only=indicators_and_threat_entities_only
             )
         except Exception as e:
             self.helper.log_error(
