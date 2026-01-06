@@ -534,18 +534,22 @@ class OrangeCyberDefense:
             )
 
         # Init variables
-        self.identity = self.helper.api.identity.create(
-            type="Organization",
-            name="Orange Cyberdefense",
-            description="""Orange Cyberdefense is the expert cybersecurity business unit of the Orange Group,
-            providing consulting, solutions and services to organizations around the globe.""",
-        )
+        if self.ocd_datalake_add_createdby or self.ocd_import_worldwatch:
+            self.identity = self.helper.api.identity.create(
+                type="Organization",
+                name="Orange Cyberdefense"
+            )
+        else:
+            self.identity = None
         self.marking = self.helper.api.marking_definition.create(
             definition_type="COMMERCIAL",
             definition="ORANGE CYBERDEFENSE",
             x_opencti_order=99,
             x_opencti_color="#ff7900",
         )
+        self.cache = {}
+
+        # Check Datalake API permissions
         if (
             self.ocd_import_datalake
             or self.ocd_import_threat_library
@@ -560,7 +564,6 @@ class OrangeCyberDefense:
                 raise ValueError(
                     "The provided Datalake token does not have 'bulk_search' permission."
                 )
-        self.cache = {}
 
     def _check_permissions(self):
         user_info = self.datalake_instance.MyAccount.me()
@@ -577,12 +580,11 @@ class OrangeCyberDefense:
             abstract="OCD-CERT Datalake additional informations",
             content=technical_md,
             created=creation_date,
+            created_by_ref=indicator_object.get("created_by_ref", None),
             modified=indicator_object["modified"],
             object_marking_refs=[self.marking["standard_id"]],
             object_refs=[indicator_object.get("id")],
         )
-        if self.ocd_datalake_add_createdby:
-            note_stix["created_by_ref"] = indicator_object["created_by_ref"]
         return note_stix
 
     def _get_ranged_scored(self, score: int):
@@ -766,8 +768,10 @@ class OrangeCyberDefense:
                     f"{prefix} This tag cannot be found in Datalake: " + tag + "\n" + str(e)
                 )
                 continue
-            if "objects" in data:
+            if "objects" in data and len(data["objects"]) > 1:
                 for stix_object in data["objects"]:
+                    if self.ocd_datalake_add_createdby and stix_object["type"] == "identity" and stix_object["identity_class"] == "organization" and stix_object["name"] == "Orange Cyberdefense":
+                        objects.append(self._process_object(stix_object))
                     if "labels" not in stix_object:
                         stix_object["labels"] = []
                     label: str
@@ -777,7 +781,7 @@ class OrangeCyberDefense:
                             objects.append(processed_object)
                             break
             else:
-                self.helper.log_info(f"{prefix} No objects found for tag " + tag)
+                self.helper.log_info(f"{prefix} No objects found for tag '{tag}'")
         return objects
 
     def get_html_content_block(self, content_block_id):
@@ -811,24 +815,21 @@ class OrangeCyberDefense:
         relationships = []
         for attacker in attackers:
             for victim in victims:
-                relationships.append(
-                    json.loads(
-                        stix2.Relationship(
-                            id=StixCoreRelationship.generate_id(
-                                "targets", attacker["id"], victim["id"]
-                            ),
-                            relationship_type="targets",
-                            created_by_ref=self.identity["standard_id"],
-                            source_ref=attacker["id"],
-                            target_ref=victim["id"],
-                            object_marking_refs=markings,
-                            start_time=date,
-                            created=date,
-                            modified=date,
-                            allow_custom=True,
-                        ).serialize()
-                    )
+                rs = stix2.Relationship(
+                    id=StixCoreRelationship.generate_id(
+                        "targets", attacker["id"], victim["id"]
+                    ),
+                    relationship_type="targets",
+                    created_by_ref=self.identity["standard_id"] if self.ocd_datalake_add_createdby else None,
+                    source_ref=attacker["id"],
+                    target_ref=victim["id"],
+                    object_marking_refs=markings,
+                    start_time=date,
+                    created=date,
+                    modified=date,
+                    allow_custom=True,
                 )
+                relationships.append(json.loads(rs.serialize()))
         for threat in threats:
             for arsenal in arsenals:
                 relationships.append(
@@ -838,7 +839,7 @@ class OrangeCyberDefense:
                                 "uses", threat["id"], arsenal["id"]
                             ),
                             relationship_type="uses",
-                            created_by_ref=self.identity["standard_id"],
+                            created_by_ref=self.identity["standard_id"] if self.ocd_datalake_add_createdby else None,
                             source_ref=threat["id"],
                             target_ref=arsenal["id"],
                             object_marking_refs=markings,
@@ -954,7 +955,8 @@ class OrangeCyberDefense:
         report_md = text_maker.handle(html_content)
 
         report_object_refs = (
-            [x["id"] for x in report_iocs if x["type"] == "indicator"]  # ids from "indicator" iocs
+            [self.identity["standard_id"]] # id from orange cyberdefense default entity
+            + [x["id"] for x in report_iocs if x["type"] == "indicator"]  # ids from "indicator" iocs
             + [x["id"] for x in report_entities]  # ids from threat entities
             + [x["id"] for x in report_relationships]  # ids from threat entities relations
         )
@@ -966,13 +968,13 @@ class OrangeCyberDefense:
             name=report["title"],
             description=report_md,
             report_types=["threat-report"],
-            created_by_ref=self.identity["standard_id"],
+            created_by_ref=self.identity["standard_id"] if self.ocd_datalake_add_createdby else None,
             external_references=external_references,
             created=parse(report["timestamp_created"]),
             published=parse(report["timestamp_updated"]),
             modified=parse(report["timestamp_updated"]),
             object_refs=(
-                report_object_refs if report_object_refs else [self.identity["standard_id"]]
+                report_object_refs
             ),
             labels=["severity-" + str(report["severity"])],
             allow_custom=True,
@@ -1135,7 +1137,10 @@ class OrangeCyberDefense:
                 if self.ocd_datalake_add_summary:
                     note_stix = self._generate_indicator_note(processed_object)
                     objects.append(note_stix)
-            if processed_object["type"] == "indicator" or self.ocd_datalake_add_related:
+                objects.append(processed_object)
+            elif self.ocd_datalake_add_createdby and processed_object["type"] == "identity" and processed_object["identity_class"] == "organization" and processed_object["name"] == "Orange Cyberdefense":
+                objects.append(processed_object)
+            elif self.ocd_datalake_add_related:
                 objects.append(processed_object)
 
         # Cleanup the temporary files
