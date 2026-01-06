@@ -225,16 +225,24 @@ class OrangeCyberdefenseEnrichment:
             default=True,
         )
 
+        self.ocd_enrich_add_createdby = get_config_variable(
+            "OCD_ENRICH_ADD_CREATEDBY",
+            ["ocd_enrich", "add_createdby"],
+            config,
+            default=True,
+        )
+
         self.max_tlp = get_config_variable(
             "OCD_ENRICH_MAX_TLP", ["ocd_enrich", "max_tlp"], config, default="TLP:AMBER"
         )
 
-        self.identity = self.helper.api.identity.create(
-            type="Organization",
-            name="Orange Cyberdefense",
-            description="""Orange Cyberdefense is the expert cybersecurity business unit of the Orange Group,
-            providing consulting, solutions and services to organizations around the globe.""",
-        )
+        if self.ocd_enrich_add_createdby:
+            self.identity = self.helper.api.identity.create(
+                type="Organization",
+                name="Orange Cyberdefense",
+            )
+        else:
+            self.identity = None
         self.marking = self.helper.api.marking_definition.create(
             definition_type="COMMERCIAL",
             definition="ORANGE CYBERDEFENSE",
@@ -270,7 +278,8 @@ class OrangeCyberdefenseEnrichment:
             scores = list(object["x_datalake_score"].values())
             if len(scores) > 0:
                 object["x_opencti_score"] = max(scores)
-
+        if not self.ocd_enrich_add_createdby:
+            object.pop("created_by_ref", None)
         if "external_references" in object:
             external_references = []
             for external_reference in object["external_references"]:
@@ -315,7 +324,7 @@ class OrangeCyberdefenseEnrichment:
             content=technical_md,
             created=creation_date,
             modified=indicator_object["modified"],
-            created_by_ref=self.identity["standard_id"],
+            created_by_ref=indicator_object.get("created_by_ref", None),
             object_marking_refs=[self.marking["standard_id"]],
             object_refs=[stix_entity["id"], indicator_object["id"]],
         )
@@ -436,7 +445,7 @@ class OrangeCyberdefenseEnrichment:
                 source_ref=indicator_object["id"],
                 target_ref=stix_entity["id"],
                 confidence=self.helper.connect_confidence_level,
-                created_by_ref=self.identity["standard_id"],
+                created_by_ref=self.identity["standard_id"] if self.ocd_enrich_add_createdby else None,
                 object_marking_refs=[self.marking["standard_id"]],
             )
             stix_objects.append(json.loads(relationship.serialize()))
