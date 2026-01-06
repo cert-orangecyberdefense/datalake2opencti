@@ -477,6 +477,15 @@ class OrangeCyberDefense:
             default=True,
         )
 
+        # OCD_WORLDWATCH_IMPORT_INDICATORS_LOOKBACK
+        self.ocd_worldwatch_import_indicators_lookback = get_config_variable(
+            "OCD_WORLDWATCH_IMPORT_INDICATORS_LOOKBACK",
+            ["ocd", "worldwatch_import_indicators_lookback"],
+            config,
+            isNumber=True,
+            default=2592000,
+        )
+
         # OCD_WORLDWATCH_IMPORT_THREAT_ENTITIES
         self.ocd_worldwatch_import_threat_entities = get_config_variable(
             "OCD_WORLDWATCH_IMPORT_THREAT_ENTITIES",
@@ -676,6 +685,34 @@ class OrangeCyberDefense:
             f"{prefix} Extracting stix objects from Datalake query hash: {datalake_query_hash}"
         )
 
+        try:
+            adv_search = self.datalake_instance.AdvancedSearch.advanced_search_from_query_hash(
+                datalake_query_hash, limit=0
+            )
+            query_body = adv_search["query_body"]
+        except Exception as e:
+            self.helper.log_error(
+                f"{prefix} Could not extract query_body for the following Bulk search : '{datalake_query_hash}', error : '{str(e)}'"
+            )
+            return []
+
+        if len(query_body.keys()) > 0 and list(query_body.keys())[0] == "AND":
+            query_body["AND"].append({
+            "AND": [
+                {
+                    "field": "system_last_updated",
+                    "type": "filter",
+                    "value": self.ocd_worldwatch_import_indicators_lookback,
+                }
+            ]
+        })
+        else:
+            self.helper.log_error(
+                f"""{prefix} Bulk search {datalake_query_hash} doesn't use a main 'AND' operator
+                -> unable to filter on last {self.ocd_interval} minutes data."""
+            )
+            return []
+
         self.helper.log_info(
             f"{prefix} Creating Bulk Search task for query hash '{datalake_query_hash}'"
         )
@@ -689,7 +726,7 @@ class OrangeCyberDefense:
                 indicators_only = True
             task = self.datalake_instance.BulkSearch.create_task(
                 for_stix_export=True,
-                query_hash=datalake_query_hash,
+                query_body=query_body,
                 indicators_only=indicators_only,
                 indicators_and_threat_entities_only=indicators_and_threat_entities_only
             )

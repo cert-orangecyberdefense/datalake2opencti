@@ -34,6 +34,7 @@ ocd:
   datalake_zip_file_delete: true
   worldwatch_api_key: 'ChangeMe'
   worldwatch_import_indicators: true
+  worldwatch_import_indicators_lookback: 2592000
   worldwatch_import_threat_entities: true
   worldwatch_start_date: '2025-01-01'
   interval: 30
