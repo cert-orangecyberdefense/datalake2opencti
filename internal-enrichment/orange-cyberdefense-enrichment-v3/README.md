@@ -140,3 +140,16 @@ Not only Datalake, but OpenCTI and the STIX standard all supports the concept of
   - Supports multiple "where_sighted_refs" targets
 
 Therefore, what can be seen as multiple positive sightings for a single indicator on Datalake might appear as one sighting with a longer observation period. Please also note that currently, only positive sightings are exported to OpenCTI.
+
+## Screenshots
+
+### Indicators in OpenCTI
+![image](./media/Indicator_1.png)
+![image](./media/Indicator_2.png)
+![image](./media/Indicator_3.png)
+
+### Malwares in OpenCTI
+![image](./media/Malware.png)
+
+### Intrusion Sets in OpenCTI
+![image](./media/Intrusion_set.png)
