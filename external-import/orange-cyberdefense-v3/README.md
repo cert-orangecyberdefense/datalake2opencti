@@ -263,17 +263,17 @@ This is an example of what the state could looks like:
 
 ## Screenshots
 
-### World Watch reports in OpenCTI
-![image](./media/Report.png)
-![image](./media/Report_2.png)
-
-### Malware in OpenCTI
-![image](./media/Malware.png)
-
-### Intrusion Set in OpenCTI
-![image](./media/Intrusion_set.png)
-
 ### Indicators in OpenCTI
 ![image](./media/Indicator_1.png)
 ![image](./media/Indicator_2.png)
 ![image](./media/Indicator_3.png)
+
+### Malwares in OpenCTI
+![image](./media/Malware.png)
+
+### Intrusion Sets in OpenCTI
+![image](./media/Intrusion_set.png)
+
+### World Watch reports in OpenCTI
+![image](./media/Report.png)
+![image](./media/Report_2.png)
