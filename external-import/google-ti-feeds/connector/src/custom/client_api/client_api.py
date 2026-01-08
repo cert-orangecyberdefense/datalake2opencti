@@ -1,9 +1,13 @@
 """Client API - Main entry point that delegates to specialized client APIs."""
 
 import logging
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from collections.abc import AsyncGenerator
+from typing import Any
 from uuid import uuid4
 
+from connector.src.custom.client_api.campaign.client_api_campaign import (
+    ClientAPICampaign,
+)
 from connector.src.custom.client_api.client_api_shared import ClientAPIShared
 from connector.src.custom.client_api.malware.client_api_malware import ClientAPIMalware
 from connector.src.custom.client_api.report.client_api_report import ClientAPIReport
@@ -52,6 +56,10 @@ class ClientAPI:
             self.vulnerability_client = ClientAPIVulnerability(
                 config, logger, self._shared_api_client, self._shared_fetcher_factory
             )
+        if self.config.import_campaigns:
+            self.campaign_client = ClientAPICampaign(
+                config, logger, self._shared_api_client, self._shared_fetcher_factory
+            )
         self.shared_client = ClientAPIShared(
             config, logger, self._shared_api_client, self._shared_fetcher_factory
         )
@@ -76,16 +84,21 @@ class ClientAPI:
         """Get the real total number of vulnerabilities from the vulnerability client."""
         return self.vulnerability_client.real_total_vulnerabilities
 
+    @property
+    def real_total_campaigns(self) -> int:
+        """Get the real total number of campaigns from the campaign client."""
+        return self.campaign_client.real_total_campaigns
+
     async def fetch_reports(
-        self, initial_state: Optional[Dict[str, Any]]
-    ) -> AsyncGenerator[Dict[Any, Any], None]:
+        self, initial_state: dict[str, Any] | None
+    ) -> AsyncGenerator[dict[Any, Any], None]:
         """Fetch reports from the API.
 
         Args:
-            initial_state (Optional[Dict[str, Any]]): The initial state of the fetcher.
+            initial_state (dict[str, Any] | None): The initial state of the fetcher.
 
         Yields:
-            AsyncGenerator[Dict[str, Any], None]: The fetched reports.
+            AsyncGenerator[dict[str, Any], None]: The fetched reports.
 
         """
         self.logger.info("Starting report fetching", {"prefix": LOG_PREFIX})
@@ -93,15 +106,15 @@ class ClientAPI:
             yield report_data
 
     async def fetch_threat_actors(
-        self, initial_state: Optional[Dict[str, Any]]
-    ) -> AsyncGenerator[Dict[Any, Any], None]:
+        self, initial_state: dict[str, Any] | None
+    ) -> AsyncGenerator[dict[Any, Any], None]:
         """Fetch threat actors from the API.
 
         Args:
-            initial_state (Optional[Dict[str, Any]]): The initial state of the fetcher.
+            initial_state (dict[str, Any] | None): The initial state of the fetcher.
 
         Yields:
-            AsyncGenerator[Dict[str, Any], None]: The fetched threat actors.
+            AsyncGenerator[dict[str, Any], None]: The fetched threat actors.
 
         """
         self.logger.info("Starting threat actor fetching", {"prefix": LOG_PREFIX})
@@ -111,15 +124,15 @@ class ClientAPI:
             yield threat_actor_data
 
     async def fetch_malware_families(
-        self, initial_state: Optional[Dict[str, Any]]
-    ) -> AsyncGenerator[Dict[Any, Any], None]:
+        self, initial_state: dict[str, Any] | None
+    ) -> AsyncGenerator[dict[Any, Any], None]:
         """Fetch malware families from the API.
 
         Args:
-            initial_state (Optional[Dict[str, Any]]): The initial state of the fetcher.
+            initial_state (dict[str, Any] | None): The initial state of the fetcher.
 
         Yields:
-            AsyncGenerator[Dict[str, Any], None]: The fetched malware families.
+            AsyncGenerator[dict[str, Any], None]: The fetched malware families.
 
         """
         self.logger.info("Starting malware family fetching", {"prefix": LOG_PREFIX})
@@ -129,15 +142,15 @@ class ClientAPI:
             yield malware_family_data
 
     async def fetch_vulnerabilities(
-        self, initial_state: Optional[Dict[str, Any]] = None
-    ) -> AsyncGenerator[Dict[Any, Any], None]:
+        self, initial_state: dict[str, Any] | None = None
+    ) -> AsyncGenerator[dict[Any, Any], None]:
         """Fetch vulnerabilities from the API.
 
         Args:
-            initial_state (Optional[Dict[str, Any]]): The initial state of the fetcher.
+            initial_state (dict[str, Any] | None): The initial state of the fetcher.
 
         Yields:
-            Dict[str, Any]: The fetched vulnerabilities.
+            dict[str, Any]: The fetched vulnerabilities.
 
         """
         self.logger.info("Starting vulnerability fetching", {"prefix": LOG_PREFIX})
@@ -146,9 +159,25 @@ class ClientAPI:
         ):
             yield vulnerability_data
 
+    async def fetch_campaigns(
+        self, initial_state: dict[str, Any] | None = None
+    ) -> AsyncGenerator[dict[Any, Any], None]:
+        """Fetch campaigns from the API.
+
+        Args:
+            initial_state (dict[str, Any] | None): The initial state of the fetcher.
+
+        Yields:
+            dict[str, Any]: The fetched campaigns.
+
+        """
+        self.logger.info("Starting campaign fetching", {"prefix": LOG_PREFIX})
+        async for campaign_data in self.campaign_client.fetch_campaigns(initial_state):
+            yield campaign_data
+
     async def fetch_subentities_ids(
         self, entity_name: str, entity_id: str, subentity_types: list[str]
-    ) -> Dict[str, List[str]]:
+    ) -> dict[str, list[str]]:
         """Fetch subentities IDs from the API.
 
         Args:
@@ -157,7 +186,7 @@ class ClientAPI:
             subentity_types (list[str]): The type of subentities to fetch.
 
         Returns:
-            Dict[str, List[str]]: The fetched subentities IDs.
+            dict[str, list[str]]: The fetched subentities IDs.
 
         """
         return await self.shared_client.fetch_subentities_ids(
@@ -165,22 +194,25 @@ class ClientAPI:
         )
 
     async def fetch_subentity_details(
-        self, subentity_ids: Dict[str, List[str]]
-    ) -> Dict[str, List[Any]]:
+        self, subentity_ids: dict[str, list[str]]
+    ) -> dict[str, list[Any]]:
         """Fetch subentity details in parallel for multiple IDs.
 
         Args:
-            subentity_ids: Dictionary mapping entity types to lists of IDs
+            subentity_ids: dictionary mapping entity types to lists of IDs
 
         Returns:
-            Dictionary mapping entity types to lists of fetched entities
+            dictionary mapping entity types to lists of fetched entities
 
         """
         return await self.shared_client.fetch_subentity_details(subentity_ids)
 
     def _create_fetcher_factory(self) -> GenericFetcherFactory:
         """Create and configure the fetcher factory with all configurations."""
-        base_headers = {"X-Apikey": self.config.api_key, "accept": "application/json"}
+        base_headers = {
+            "X-Apikey": self.config.api_key.get_secret_value(),
+            "accept": "application/json",
+        }
 
         if hasattr(self.config, "api_url") and self.config.api_url:
             self.logger.info(

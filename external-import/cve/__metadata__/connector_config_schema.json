@@ -14,20 +14,20 @@
       "description": "The token of the user who represents the connector in the OpenCTI platform.",
       "type": "string"
     },
-    "CONNECTOR_ID": {
-      "default": "cve--e0c380ad-6665-4f2e-8558-5d2610e5abcf",
-      "description": "A unique UUIDv4 identifier for this connector instance.",
-      "type": "string"
-    },
     "CONNECTOR_NAME": {
-      "default": "Common Vulnerabilities and Exposures",
+      "default": "NIST NVD CVE",
       "description": "Name of the connector.",
       "type": "string"
     },
     "CONNECTOR_SCOPE": {
-      "default": "cve",
+      "default": [
+        "cve"
+      ],
       "description": "The scope or type of data the connector is importing, either a MIME type or Stix Object (for information only).",
-      "type": "string"
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
     },
     "CONNECTOR_TYPE": {
       "default": "EXTERNAL_IMPORT",
@@ -41,47 +41,10 @@
         "debug",
         "info",
         "warn",
+        "warning",
         "error"
       ],
       "type": "string"
-    },
-    "CONNECTOR_DURATION_PERIOD": {
-      "default": "PT24H",
-      "description": "Duration between two scheduled runs of the connector (ISO 8601 format).",
-      "format": "duration",
-      "type": "string"
-    },
-    "CONNECTOR_QUEUE_THRESHOLD": {
-      "default": null,
-      "description": "Connector queue max size in Mbytes. Default to 500.",
-      "exclusiveMinimum": 0,
-      "type": "integer"
-    },
-    "CONNECTOR_RUN_AND_TERMINATE": {
-      "default": null,
-      "description": "Connector run-and-terminate flag.",
-      "type": "boolean"
-    },
-    "CONNECTOR_SEND_TO_QUEUE": {
-      "default": null,
-      "description": "Connector send-to-queue flag.",
-      "type": "boolean"
-    },
-    "CONNECTOR_SEND_TO_DIRECTORY": {
-      "default": null,
-      "description": "Connector send-to-directory flag.",
-      "type": "boolean"
-    },
-    "CONNECTOR_SEND_TO_DIRECTORY_PATH": {
-      "default": null,
-      "description": "Connector send-to-directory path.",
-      "type": "string"
-    },
-    "CONNECTOR_SEND_TO_DIRECTORY_RETENTION": {
-      "default": null,
-      "description": "Connector send-to-directory retention in days.",
-      "exclusiveMinimum": 0,
-      "type": "integer"
     },
     "CVE_BASE_URL": {
       "default": "https://services.nvd.nist.gov/rest/json/cves",

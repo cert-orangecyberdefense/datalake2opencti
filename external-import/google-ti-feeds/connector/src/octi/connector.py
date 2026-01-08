@@ -1,7 +1,8 @@
 """Core connector as defined in the OpenCTI connector template."""
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, List, Optional
+from collections.abc import Awaitable
+from typing import TYPE_CHECKING, Any, Callable
 
 from connector.src.custom.configs.gti_config import GTIConfig
 from connector.src.custom.exceptions.connector_errors.gti_work_processing_error import (
@@ -158,18 +159,20 @@ class Connector:
                     meta={"prefix": LOG_PREFIX, "error": str(cleanup_err)},
                 )
 
-    async def _process_gti_imports(self, gti_config: GTIConfig) -> Optional[str]:
+    async def _process_gti_imports(self, gti_config: GTIConfig) -> str | None:
         """Process GTI imports either in parallel or sequentially based on configuration."""
         enable_parallelism = True
 
         reports_enabled = gti_config.import_reports
         threat_actors_enabled = gti_config.import_threat_actors
+        campaigns_enabled = gti_config.import_campaigns
         malware_families_enabled = gti_config.import_malware_families
         vulnerabilities_enabled = gti_config.import_vulnerabilities
 
         if (
             not reports_enabled
             and not threat_actors_enabled
+            and not campaigns_enabled
             and not malware_families_enabled
             and not vulnerabilities_enabled
         ):
@@ -182,6 +185,7 @@ class Connector:
             if enable_parallelism and (
                 reports_enabled
                 or threat_actors_enabled
+                or campaigns_enabled
                 or malware_families_enabled
                 or vulnerabilities_enabled
             ):
@@ -191,6 +195,7 @@ class Connector:
                     gti_config,
                     reports_enabled,
                     threat_actors_enabled,
+                    campaigns_enabled,
                     malware_families_enabled,
                     vulnerabilities_enabled,
                 )
@@ -207,20 +212,22 @@ class Connector:
             )
             return error_msg
 
-    def _get_enabled_imports(self, gti_config: GTIConfig) -> List[str]:
+    def _get_enabled_imports(self, gti_config: GTIConfig) -> list[str]:
         """Get list of enabled import types."""
         enabled_imports = []
         if gti_config.import_reports:
             enabled_imports.append("reports")
         if gti_config.import_threat_actors:
             enabled_imports.append("threat_actors")
+        if gti_config.import_campaigns:
+            enabled_imports.append("campaigns")
         if gti_config.import_malware_families:
             enabled_imports.append("malware_families")
         if gti_config.import_vulnerabilities:
             enabled_imports.append("vulnerabilities")
         return enabled_imports
 
-    def _create_processing_tasks(self, gti_config: GTIConfig) -> List[Any]:
+    def _create_processing_tasks(self, gti_config: GTIConfig) -> list[Any]:
         """Create asyncio tasks for enabled import types."""
         tasks = []
 
@@ -235,6 +242,12 @@ class Connector:
                 self._process_gti_threat_actors(gti_config), name="threat_actors"
             )
             tasks.append(threat_actors_task)
+
+        if gti_config.import_campaigns:
+            campaigns_task = asyncio.create_task(
+                self._process_gti_campaigns(gti_config), name="campaigns"
+            )
+            tasks.append(campaigns_task)
 
         if gti_config.import_malware_families:
             malware_families_task = asyncio.create_task(
@@ -251,8 +264,8 @@ class Connector:
         return tasks
 
     def _process_completed_tasks(
-        self, done_tasks: List[asyncio.Task[Any]]
-    ) -> tuple[bool, Optional[str]]:
+        self, done_tasks: list[asyncio.Task[Any]]
+    ) -> tuple[bool, str | None]:
         """Process completed tasks and return error status."""
         any_error = False
         first_error = None
@@ -282,14 +295,14 @@ class Connector:
 
         return any_error, first_error
 
-    async def _cancel_remaining_tasks(self, tasks: List[asyncio.Task[Any]]) -> None:
+    async def _cancel_remaining_tasks(self, tasks: list[asyncio.Task[Any]]) -> None:
         """Cancel any remaining tasks and wait for cleanup."""
         for task in tasks:
             if not task.done():
                 task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def _process_gti_parallel(self, gti_config: GTIConfig) -> Optional[Any]:
+    async def _process_gti_parallel(self, gti_config: GTIConfig) -> Any | None:
         """Process GTI imports in parallel."""
         enabled_imports = self._get_enabled_imports(gti_config)
         self._logger.info(
@@ -318,7 +331,7 @@ class Connector:
         enabled: bool,
         gti_config: GTIConfig,
         processor_func: Callable[[GTIConfig], Awaitable[Any]],
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """Process a specific import type if enabled."""
         if enabled:
             self._logger.info(
@@ -337,9 +350,10 @@ class Connector:
         gti_config: GTIConfig,
         reports_enabled: bool,
         threat_actors_enabled: bool,
+        campaigns_enabled: bool,
         malware_families_enabled: bool,
         vulnerabilities_enabled: bool,
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """Process GTI imports sequentially."""
         self._logger.info("Starting sequential processing...", {"prefix": LOG_PREFIX})
 
@@ -355,6 +369,15 @@ class Connector:
                 threat_actors_enabled,
                 gti_config,
                 self._process_gti_threat_actors,
+            )
+            if error_result:
+                return error_result
+
+            error_result = await self._process_import_type(
+                "campaigns",
+                campaigns_enabled,
+                gti_config,
+                self._process_gti_campaigns,
             )
             if error_result:
                 return error_result
@@ -392,7 +415,7 @@ class Connector:
             )
             return error_msg
 
-    async def _process_gti_reports(self, gti_config: GTIConfig) -> Optional[str]:
+    async def _process_gti_reports(self, gti_config: GTIConfig) -> str | None:
         """Process GTI reports using the orchestrator."""
         try:
             orchestrator = Orchestrator(
@@ -419,7 +442,7 @@ class Connector:
             )
             return error_msg
 
-    async def _process_gti_threat_actors(self, gti_config: GTIConfig) -> Optional[str]:
+    async def _process_gti_threat_actors(self, gti_config: GTIConfig) -> str | None:
         """Process GTI threat actors using the orchestrator."""
         try:
             orchestrator = Orchestrator(
@@ -449,9 +472,37 @@ class Connector:
             )
             return error_msg
 
-    async def _process_gti_malware_families(
-        self, gti_config: GTIConfig
-    ) -> Optional[str]:
+    async def _process_gti_campaigns(self, gti_config: GTIConfig) -> str | None:
+        """Process GTI campaigns using the orchestrator."""
+        try:
+            orchestrator = Orchestrator(
+                work_manager=self.work_manager,
+                logger=self._logger,
+                config=gti_config,
+                tlp_level=self._config.connector_config.tlp_level,
+            )
+
+            initial_state = self._helper.get_state()
+            self._logger.info(
+                "Retrieved state",
+                {"prefix": LOG_PREFIX, "initial_state": initial_state},
+            )
+
+            self._logger.info(
+                "Starting GTI campaigns ingestion...", {"prefix": LOG_PREFIX}
+            )
+            await orchestrator.run_campaign(initial_state)
+            return None
+
+        except Exception as e:
+            error_msg = f"GTI campaigns processing failed: {str(e)}"
+            self._logger.error(
+                "GTI campaigns processing failed",
+                {"prefix": LOG_PREFIX, "error": str(e)},
+            )
+            return error_msg
+
+    async def _process_gti_malware_families(self, gti_config: GTIConfig) -> str | None:
         """Process GTI malware families using the orchestrator."""
         try:
             orchestrator = Orchestrator(
@@ -481,9 +532,7 @@ class Connector:
             )
             return error_msg
 
-    async def _process_gti_vulnerabilities(
-        self, gti_config: GTIConfig
-    ) -> Optional[str]:
+    async def _process_gti_vulnerabilities(self, gti_config: GTIConfig) -> str | None:
         """Process GTI vulnerabilities using the orchestrator."""
         try:
             orchestrator = Orchestrator(

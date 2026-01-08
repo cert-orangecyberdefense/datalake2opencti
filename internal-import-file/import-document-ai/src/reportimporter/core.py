@@ -19,7 +19,11 @@ from reportimporter.relations_allowed import (
     load_allowed_relations,
     stix_lookup_type,
 )
-from reportimporter.util import create_stix_object
+from reportimporter.util import (
+    compute_bundle_stats,
+    create_stix_object,
+    remove_all_relationships,
+)
 from requests.exceptions import ConnectionError, HTTPError
 
 # ---------------------------------------------------------------------------
@@ -77,6 +81,14 @@ class ReportImporter:
             "CONNECTOR_LICENCE_KEY_PEM", ["connector", "licence_key_pem"], config
         )
         self.licence_key_base64 = base64.b64encode(license_key_pem.encode())
+
+        self.include_relationships = get_config_variable(
+            "IMPORT_DOCUMENT_INCLUDE_RELATIONSHIPS",
+            ["import_document", "include_relationships"],
+            config,
+            default=True,
+        )
+
         # Retrieve the OpenCTI instance ID (used as a header for the ML service)
         # TODO make the connector more resilient to OpenCTI being down at startup,
         # by wraping the initial helper.api.query() in a try/except with retries and logging
@@ -158,8 +170,8 @@ class ReportImporter:
         if self.helper.get_only_contextual() and entity is None:
             return "Connector is only contextual and entity is not defined. Nothing was imported"
 
-        # If the file ID starts with "import/global", attach it as x_opencti_files in the bundle
-        if data["file_id"].startswith("import/global"):
+        # If the file ID contains "import/global", attach it as x_opencti_files in the bundle
+        if "import/global" in data["file_id"]:
             file_data_encoded = base64.b64encode(file_content_buffered.read())
             self.file = {
                 "name": data["file_id"].replace("import/global/", ""),
@@ -222,7 +234,7 @@ class ReportImporter:
                 "observables",
                 "entities",
                 "relationships",
-                "report",
+                "reports",
                 "total_sent",
             )
         ):
@@ -237,7 +249,7 @@ class ReportImporter:
                 f"{counts['observables']} observables, "
                 f"{counts['entities']} entities, "
                 f"{counts['relationships']} relationships"
-                + (f", {counts['report']} report" if counts["report"] else "")
+                + (f", {counts['reports']} reports" if counts["reports"] else "")
             )
         else:
             summary_lines.append(
@@ -245,7 +257,7 @@ class ReportImporter:
                 f"{counts['observables']} observables, "
                 f"{counts['entities']} entities, "
                 f"{counts['relationships']} relationships"
-                + (f", {counts['report']} report" if counts["report"] else "")
+                + (f", {counts['reports']} reports" if counts["reports"] else "")
                 + f" (total sent = {counts['total_sent']})"
             )
         if skipped:
@@ -402,11 +414,6 @@ class ReportImporter:
             category: str = match["label"]
             txt: str | None = self._sanitise_name(match["text"])
             if not txt:
-                # text must be at least 2 characters in length
-                # Skip objects like "." or empty strings: they would break GraphQL
-                self.helper.connector_logger.debug(
-                    f"Skip object with invalid name: {match["text"]!r}"
-                )
                 continue
 
             if match["type"] == "entity":
@@ -574,8 +581,6 @@ class ReportImporter:
                 ids.append(e["id"])
 
         relationships: list[stix2.Relationship] = []  # accumulate all relationships
-
-        report_is_update = entity is not None
 
         # Build relationships defined by the connector's own rules
         # 1. Add relationships that stem from the contextual “entity”
@@ -773,22 +778,19 @@ class ReportImporter:
                 final_ids.append(obj["id"])
                 final_objects.append(obj)
 
-        bundle = stix2.Bundle(objects=final_objects, allow_custom=True).serialize()
-        bundles_sent = self.helper.send_stix2_bundle(
-            bundle=bundle,
+        bundle = stix2.Bundle(objects=final_objects, allow_custom=True)
+
+        if not self.include_relationships:
+            bundle = remove_all_relationships(bundle)
+
+        self.helper.send_stix2_bundle(
+            bundle=bundle.serialize(),
             bypass_validation=bypass_validation,
             file_name="import-document-ai-" + Path(file_name).stem + ".json",
             entity_id=entity["id"] if entity else None,
         )
 
-        # Correction if updated report counted as observable
-        actual_count = len(bundles_sent) - 1 if report_is_update else len(bundles_sent)
-
         return {
-            "observables": len(observables_ids),
-            "entities": len(entities_ids),
-            "relationships": len(relationship_ids),
-            "report": 0 if report_is_update else 1,
-            "total_sent": actual_count,
+            **compute_bundle_stats(bundle),
             "skipped_rels": list(skipped_rels),
         }

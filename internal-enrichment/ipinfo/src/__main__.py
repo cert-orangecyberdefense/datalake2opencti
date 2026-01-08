@@ -10,22 +10,19 @@ from pycti import (
     OpenCTIConnectorHelper,
     StixCoreRelationship,
 )
-from src.services import IPInfoConfig
+from src import ConfigLoader
 
 
 class IpInfoConnector:
     def __init__(self):
         # Instantiate the connector helper from config
-        self.config = IPInfoConfig()
-        self.config_instance = self.config.load
-        # Convert the config into a dictionary, automatically excluding any parameters set to `None`.
-        self.config_dict = self.config_instance.model_dump(exclude_none=True)
+        self.config = ConfigLoader()
         self.helper = OpenCTIConnectorHelper(
-            config=self.config_dict, playbook_compatible=True
+            config=self.config.model_dump_pycti(), playbook_compatible=True
         )
-        self.token = self.config_instance.ipinfo.token
-        self.max_tlp = self.config_instance.ipinfo.max_tlp
-        self.use_asn_name = self.config_instance.ipinfo.use_asn_name
+        self.token = self.config.ipinfo.token
+        self.max_tlp = self.config.ipinfo.max_tlp
+        self.use_asn_name = self.config.ipinfo.use_asn_name
 
     def _generate_stix_bundle(
         self, stix_objects, stix_entity, country, city, loc, asn, privacy
@@ -153,14 +150,42 @@ class IpInfoConnector:
             + "/json/?token="
             + self.token.get_secret_value()
         )
-        response = requests.request(
-            "GET",
-            api_url,
-            headers={"accept": "application/json", "content-type": "application/json"},
-        )
-        json_data = response.json()
-        if "status" in json_data and json_data["status"] == 429:
-            raise ValueError("IpInfo Rate limit exceeded")
+
+        try:
+            response = requests.request(
+                "GET",
+                api_url,
+                headers={
+                    "accept": "application/json",
+                    "content-type": "application/json",
+                },
+            )
+            response.raise_for_status()
+            json_data = response.json()
+
+        except requests.exceptions.HTTPError as err:
+            error_status_code = getattr(err.response, "status_code", None)
+            error_reason = getattr(err.response, "reason", None)
+
+            if error_status_code == 403:
+                raise ValueError(
+                    f"Invalid API Token, Error {error_status_code}. Reason: {error_reason}"
+                )
+            elif error_status_code == 429:
+                raise ValueError(
+                    f"IpInfo Rate limit exceeded, Error {error_status_code}. Reason: {error_reason}"
+                )
+            else:
+                raise ValueError(
+                    f"Unexpected HTTP Error {error_status_code}. Reason: {error_reason}"
+                )
+
+        except requests.exceptions.RequestException:
+            raise ConnectionError("API connection error.")
+
+        except ValueError:
+            raise ValueError("Invalid JSON in response.")
+
         if "country" not in json_data:
             raise ValueError("Country not found, an error occurred")
         country = pycountry.countries.get(alpha_2=json_data["country"])

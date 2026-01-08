@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
 from connector.src.custom.configs import (
     THREAT_ACTOR_BATCH_PROCESSOR_CONFIG,
@@ -71,7 +71,7 @@ class OrchestratorThreatActor(BaseOrchestrator):
             logger=self.logger,
         )
 
-    async def run(self, initial_state: Optional[Dict[str, Any]]) -> None:
+    async def run(self, initial_state: dict[str, Any] | None) -> None:
         """Run the threat actor orchestrator.
 
         Args:
@@ -80,13 +80,14 @@ class OrchestratorThreatActor(BaseOrchestrator):
         """
         subentity_types = [
             "malware_families",
-            # "reports",
             "attack_techniques",
             "vulnerabilities",
-            #            "domains",
-            #            "files",
-            #            "urls",
-            #            "ip_addresses",
+            # "campaigns",
+            # "reports",
+            # "domains",
+            # "files",
+            # "urls",
+            # "ip_addresses",
         ]
         try:
             async for gti_threat_actors in self.client_api.fetch_threat_actors(
@@ -94,6 +95,7 @@ class OrchestratorThreatActor(BaseOrchestrator):
             ):
                 total_threat_actors = len(gti_threat_actors)
                 for threat_actor_idx, threat_actor in enumerate(gti_threat_actors):
+                    self._update_index_inplace()
                     threat_actor_entities = self.converter.convert_threat_actor_to_stix(
                         threat_actor
                     )
@@ -158,7 +160,7 @@ class OrchestratorThreatActor(BaseOrchestrator):
 
                     all_entities = threat_actor_entities + (subentity_stix or [])
 
-                    entity_types: Dict[str, int] = {}
+                    entity_types: dict[str, int] = {}
                     for entity in all_entities:
                         entity_type = getattr(entity, "type", None)
                         if entity_type:
@@ -180,7 +182,6 @@ class OrchestratorThreatActor(BaseOrchestrator):
                     )
 
                     self._check_batch_size_and_flush(self.batch_processor, all_entities)
-                    self._update_index_inplace()
                     self._add_entities_to_batch(
                         self.batch_processor, all_entities, self.converter
                     )

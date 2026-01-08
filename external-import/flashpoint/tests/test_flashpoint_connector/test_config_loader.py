@@ -17,8 +17,6 @@ def fake_config_dict() -> dict[str, dict[str, Any]]:
         "opencti": {
             "token": "test-opencti-token",
             "url": "http://test-opencti-url/",
-            "ssl_verify": False,
-            "json_logging": True,
         },
         "connector": {
             "id": "test-connector-id",
@@ -27,17 +25,6 @@ def fake_config_dict() -> dict[str, dict[str, Any]]:
             "scope": "test",
             "log_level": "info",
             "duration_period": "PT1H",
-            "expose_metrics": False,
-            "metrics_port": 9095,
-            "only_contextual": False,
-            "queue_protocol": "amqp",
-            "queue_threshold": 500,
-            "run_and_terminate": False,
-            "send_to_directory": False,
-            "send_to_directory_path": None,
-            "send_to_directory_retention": 7,
-            "send_to_queue": True,
-            "validate_before_import": False,
         },
         "flashpoint": {
             "api_key": "test-flashpoint-api-key",
@@ -48,6 +35,7 @@ def fake_config_dict() -> dict[str, dict[str, Any]]:
             ),  # Reduce precision for later comparison in tests
             "import_reports": True,
             "indicators_in_reports": True,
+            "create_reports": False,
             "guess_relationships_from_reports": False,
             "import_alerts": True,
             "alert_create_related_entities": True,
