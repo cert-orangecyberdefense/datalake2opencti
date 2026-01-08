@@ -105,6 +105,8 @@ def iter_stix_bs_results(zip_file_path):
 
 
 def generate_markdown_table(data):
+
+    # Print scores table
     markdown_str = "## Threat scores\n"
     markdown_str += "| DDoS | Fraud | Hack | Leak | Malware | Phishing | Scam | Scan | Spam |\n"
     markdown_str += "|------|-------|------|------|---------|----------|------|------|------|\n"
@@ -125,9 +127,8 @@ def generate_markdown_table(data):
     markdown_str += "| source_id | count | first_seen | last_updated | min_depth | max_depth |\n"
     markdown_str += "|-----------|-------|------------|--------------|-----------|-----------|\n"
 
+    # Print threat sources table
     threat_sources = data.get("x_datalake_sources", [])
-
-    # Sort the threat_sources by 'last_updated' in descending order
     threat_sources.sort(key=lambda x: x.get("last_updated", ""), reverse=True)
 
     for source in threat_sources:
@@ -135,20 +136,27 @@ def generate_markdown_table(data):
         count = source.get("count", "-")
         first_seen = source.get("first_seen", "-")
         if first_seen != "-":
-            # Format 'first_seen' to 'YYYY-MM-DD'
             first_seen = datetime.datetime.fromisoformat(first_seen.rstrip("Z")).strftime(
                 "%Y-%m-%d %H:%M"
             )
         last_updated = source.get("last_updated", "-")
         if last_updated != "-":
-            # Format 'last_updated' to 'YYYY-MM-DD'
             last_updated = datetime.datetime.fromisoformat(last_updated.rstrip("Z")).strftime(
                 "%Y-%m-%d %H:%M"
             )
         min_depth = source.get("min_depth", "-")
         max_depth = source.get("max_depth", "-")
-
         markdown_str += f"| {source_id} | {count} | {first_seen} | {last_updated} | {min_depth} | {max_depth} |\n"
+
+    # Print whitelists table
+    whitelist_sources = data.get("x_datalake_whitelist_sources", [])
+    if len(whitelist_sources) > 0:
+        markdown_str += "## Whitelist sources\n"
+        markdown_str += "| source_id |\n"
+        markdown_str += "|-----------|\n"
+    for source in whitelist_sources:
+        source_id = source.get("source_id", "-")
+        markdown_str += f"| {source_id} |\n"
 
     return markdown_str
 
@@ -586,7 +594,7 @@ class OrangeCyberDefense:
         note_stix = stix2.Note(
             id=Note.generate_id(creation_date, technical_md),
             confidence=self.helper.connect_confidence_level,
-            abstract="OCD-CERT Datalake additional informations",
+            abstract="CERT Orange Cyberdefense threat summary",
             content=technical_md,
             created=creation_date,
             created_by_ref=indicator_object.get("created_by_ref", None),
