@@ -41,7 +41,9 @@ def _curate_labels(labels):
         label_value = re.sub(r"\s+", "_", label_value.strip().lower())
 
         curated_labels.append(label_value)
-    curated_labels = [label for label in curated_labels if label is not None and len(label) > 0]
+    curated_labels = [
+        label for label in curated_labels if label is not None and len(label) > 0
+    ]
     return curated_labels
 
 
@@ -55,8 +57,12 @@ def _generate_markdown_table(data):
 
     # Print scores table
     markdown_str = "## Threat scores\n"
-    markdown_str += "| DDoS | Fraud | Hack | Leak | Malware | Phishing | Scam | Scan | Spam |\n"
-    markdown_str += "|------|-------|------|------|---------|----------|------|------|------|\n"
+    markdown_str += (
+        "| DDoS | Fraud | Hack | Leak | Malware | Phishing | Scam | Scan | Spam |\n"
+    )
+    markdown_str += (
+        "|------|-------|------|------|---------|----------|------|------|------|\n"
+    )
 
     threat_scores = data.get("x_datalake_score", {})
     ddos = threat_scores.get("ddos", "-")
@@ -71,8 +77,12 @@ def _generate_markdown_table(data):
 
     markdown_str += f"| {ddos} | {fraud} | {hack} | {leak} | {malware} | {phishing} | {scam} | {scan} | {spam} |\n"
     markdown_str += "## Threat intelligence sources\n"
-    markdown_str += "| source_id | count | first_seen | last_updated | min_depth | max_depth |\n"
-    markdown_str += "|-----------|-------|------------|--------------|-----------|-----------|\n"
+    markdown_str += (
+        "| source_id | count | first_seen | last_updated | min_depth | max_depth |\n"
+    )
+    markdown_str += (
+        "|-----------|-------|------------|--------------|-----------|-----------|\n"
+    )
 
     # Print threat sources table
     threat_sources = data.get("x_datalake_sources", [])
@@ -83,14 +93,14 @@ def _generate_markdown_table(data):
         count = source.get("count", "-")
         first_seen = source.get("first_seen", "-")
         if first_seen != "-":
-            first_seen = datetime.datetime.fromisoformat(first_seen.rstrip("Z")).strftime(
-                "%Y-%m-%d %H:%M"
-            )
+            first_seen = datetime.datetime.fromisoformat(
+                first_seen.rstrip("Z")
+            ).strftime("%Y-%m-%d %H:%M")
         last_updated = source.get("last_updated", "-")
         if last_updated != "-":
-            last_updated = datetime.datetime.fromisoformat(last_updated.rstrip("Z")).strftime(
-                "%Y-%m-%d %H:%M"
-            )
+            last_updated = datetime.datetime.fromisoformat(
+                last_updated.rstrip("Z")
+            ).strftime("%Y-%m-%d %H:%M")
         min_depth = source.get("min_depth", "-")
         max_depth = source.get("max_depth", "-")
         markdown_str += f"| {source_id} | {count} | {first_seen} | {last_updated} | {min_depth} | {max_depth} |\n"
@@ -138,10 +148,14 @@ def validate_scope(value: str) -> str:
         "stixfile": "StixFile",
     }
     scope_splitted = [scope.strip().lower() for scope in value.split(",")]
-    valid_scope = [available_values[scope] for scope in scope_splitted if scope in available_values]
+    valid_scope = [
+        available_values[scope] for scope in scope_splitted if scope in available_values
+    ]
 
     if not valid_scope:
-        raise ValueError(f"No valid scopes found. Allowed values are: {available_values}.")
+        raise ValueError(
+            f"No valid scopes found. Allowed values are: {available_values}."
+        )
     scope_string = ",".join(valid_scope)
 
     return scope_string
@@ -149,7 +163,9 @@ def validate_scope(value: str) -> str:
 
 class OrangeCyberdefenseEnrichment:
     def __init__(self):
-        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yml")
+        config_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "config.yml"
+        )
         config = (
             yaml.load(open(config_path), Loader=yaml.FullLoader)
             if os.path.isfile(config_path)
@@ -275,7 +291,9 @@ class OrangeCyberdefenseEnrichment:
         if "labels" in object:
             for label in object["labels"]:
                 if label in dict_label_to_object_marking_refs.keys():
-                    object["object_marking_refs"] = dict_label_to_object_marking_refs[label]
+                    object["object_marking_refs"] = dict_label_to_object_marking_refs[
+                        label
+                    ]
         if "labels" in object and self.ocd_enrich_add_tags_as_labels:
             object["labels"] = _curate_labels(object["labels"])
         else:
@@ -301,16 +319,27 @@ class OrangeCyberdefenseEnrichment:
             object["external_references"] = external_references
 
         # Type specific operations
-        if object["type"] == "threat-actor" and self.ocd_enrich_threat_actor_as_intrusion_set:
+        if (
+            object["type"] == "threat-actor"
+            and self.ocd_enrich_threat_actor_as_intrusion_set
+        ):
             object["type"] = "intrusion-set"
             object["id"] = object["id"].replace("threat-actor", "intrusion-set")
         if object["type"] == "relationship":
             if self.ocd_enrich_threat_actor_as_intrusion_set:
-                object["source_ref"] = object["source_ref"].replace("threat-actor", "intrusion-set")
-                object["target_ref"] = object["target_ref"].replace("threat-actor", "intrusion-set")
+                object["source_ref"] = object["source_ref"].replace(
+                    "threat-actor", "intrusion-set"
+                )
+                object["target_ref"] = object["target_ref"].replace(
+                    "threat-actor", "intrusion-set"
+                )
         if object["type"] == "indicator" and self.ocd_enrich_add_scores_as_labels:
-            object["pattern"] = object["pattern"].replace("[x-phone-number:international_phone_number", "[phone-number:value")
-            object["pattern"] = object["pattern"].replace("[x-crypto:value", "[cryptocurrency-wallet:value")
+            object["pattern"] = object["pattern"].replace(
+                "[x-phone-number:international_phone_number", "[phone-number:value"
+            )
+            object["pattern"] = object["pattern"].replace(
+                "[x-crypto:value", "[cryptocurrency-wallet:value"
+            )
             threat_scores = object.get("x_datalake_score", {})
             for threat_type, score in threat_scores.items():
                 ranged_score = _get_ranged_score(score)
@@ -437,11 +466,15 @@ class OrangeCyberdefenseEnrichment:
                             external_reference_id=ext_ref["id"],
                         )
                     except Exception as e:
-                        self.helper.log_error(f"Unable to create external reference: {str(e)}")
+                        self.helper.log_error(
+                            f"Unable to create external reference: {str(e)}"
+                        )
 
         if self.ocd_enrich_add_summary:
             try:
-                note_stix = self._generate_observable_note(indicator_object, stix_entity)
+                note_stix = self._generate_observable_note(
+                    indicator_object, stix_entity
+                )
                 stix_objects.append(json.loads(note_stix.serialize()))
             except Exception as e:
                 self.helper.log_error(f"Unable to create enrichment note: {str(e)}")
@@ -453,7 +486,11 @@ class OrangeCyberdefenseEnrichment:
                 source_ref=indicator_object["id"],
                 target_ref=stix_entity["id"],
                 confidence=self.helper.connect_confidence_level,
-                created_by_ref=self.identity["standard_id"] if self.ocd_enrich_add_createdby else None,
+                created_by_ref=(
+                    self.identity["standard_id"]
+                    if self.ocd_enrich_add_createdby
+                    else None
+                ),
                 object_marking_refs=[self.marking["standard_id"]],
             )
             stix_objects.append(json.loads(relationship.serialize()))
