@@ -519,7 +519,7 @@ class OrangeCyberDefense:
                     "Parameter 'OCD_IMPORT_WORLDWATCH_START_DATE' has been deprecated. Please use 'OCD_WORLDWATCH_START_DATE' instead."
                 )
             else:
-                self.ocd_worldwatch_start_date = "2025-01-01"
+                self.ocd_worldwatch_start_date = "2026-01-01"
 
         # OCD_INTERVAL
         self.ocd_interval = get_config_variable(

@@ -36,6 +36,6 @@ ocd:
   worldwatch_import_indicators: true
   worldwatch_import_indicators_lookback: 2592000
   worldwatch_import_threat_entities: true
-  worldwatch_start_date: '2025-01-01'
+  worldwatch_start_date: '2026-01-01'
   interval: 30
   reset_state: false
