@@ -5,7 +5,7 @@ import sys
 import time
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
-from typing import Iterable, TypeVar
+from typing import Iterable
 
 import html2text
 import requests
@@ -21,7 +21,7 @@ from pycti import (
     get_config_variable,
 )
 
-T = TypeVar("T")
+import utils
 
 atom_types_mapping = {
     "as": "Autonomous-System",
@@ -37,40 +37,9 @@ atom_types_mapping = {
 }
 
 
-def keep_first(iterable: Iterable[T], key=None):
-    """
-    Generator that yields once per unique element from the provided iterable.
-    If key is provided, it is used to determine uniqueness.
-    If it is string, it must be a valid key of all elements of the iterable.
-    Else, key must be a callable returning a hashable value, it will be called on all elements.
-
-    """
-    if key is None:
-
-        def func(x):
-            return x
-
-    elif isinstance(key, str):
-
-        def func(x):
-            return x[key]
-
-    elif callable(key):
-        func = key
-    else:
-        raise ValueError("key must either be None, a str, or a callable")
-    seen = set()
-    for elem in iterable:
-        k = func(elem)
-        if k in seen:
-            continue
-        seen.add(k)
-        yield elem
-
-
 def iter_stix_bs_results(zip_file_path):
     """
-    iterates on all stix objects of a stix bulk search result which is a zip file of multiple stix bundle json files
+    Iterates on all stix objects of a stix bulk search result which is a zip file of multiple stix bundle json files
     """
     with zipfile.ZipFile(zip_file_path, "r") as zip_file:
         for filename in zip_file.namelist():
@@ -80,121 +49,31 @@ def iter_stix_bs_results(zip_file_path):
                     yield from bundle["objects"]
 
 
-def generate_markdown_table(data):
-
-    # Print scores table
-    markdown_str = "## Threat scores\n"
-    markdown_str += (
-        "| DDoS | Fraud | Hack | Leak | Malware | Phishing | Scam | Scan |"
-        " Spam |\n"
-    )
-    markdown_str += "|------|-------|------|------|---------|----------|------|------|------|\n"
-
-    threat_scores = data.get("x_datalake_score", {})
-    ddos = threat_scores.get("ddos", "-")
-    fraud = threat_scores.get("fraud", "-")
-    hack = threat_scores.get("hack", "-")
-    leak = threat_scores.get("leak", "-")
-    malware = threat_scores.get("malware", "-")
-    phishing = threat_scores.get("phishing", "-")
-    scam = threat_scores.get("scam", "-")
-    scan = threat_scores.get("scan", "-")
-    spam = threat_scores.get("spam", "-")
-
-    markdown_str += (
-        f"| {ddos} | {fraud} | {hack} | {leak} | {malware} | {phishing} |"
-        f" {scam} | {scan} | {spam} |\n"
-    )
-    markdown_str += "## Threat intelligence sources\n"
-    markdown_str += (
-        "| source_id | count | first_seen | last_updated | min_depth |"
-        " max_depth |\n"
-    )
-    markdown_str += "|-----------|-------|------------|--------------|-----------|-----------|\n"
-
-    # Print threat sources table
-    threat_sources = data.get("x_datalake_sources", [])
-    threat_sources.sort(key=lambda x: x.get("last_updated", ""), reverse=True)
-
-    for source in threat_sources:
-        source_id = source.get("source_id", "-")
-        count = source.get("count", "-")
-        first_seen = source.get("first_seen", "-")
-        if first_seen != "-":
-            first_seen = datetime.datetime.fromisoformat(
-                first_seen.rstrip("Z")
-            ).strftime("%Y-%m-%d %H:%M")
-        last_updated = source.get("last_updated", "-")
-        if last_updated != "-":
-            last_updated = datetime.datetime.fromisoformat(
-                last_updated.rstrip("Z")
-            ).strftime("%Y-%m-%d %H:%M")
-        min_depth = source.get("min_depth", "-")
-        max_depth = source.get("max_depth", "-")
-        markdown_str += (
-            f"| {source_id} | {count} | {first_seen} | {last_updated} |"
-            f" {min_depth} | {max_depth} |\n"
-        )
-
-    # Print whitelists table
-    whitelist_sources = data.get("x_datalake_whitelist_sources", [])
-    if len(whitelist_sources) > 0:
-        markdown_str += "## Whitelist sources\n"
-        markdown_str += "| source_id |\n"
-        markdown_str += "|-----------|\n"
-    for source in whitelist_sources:
-        source_id = source.get("source_id", "-")
-        markdown_str += f"| {source_id} |\n"
-
-    return markdown_str
-
-
-def extract_datalake_query_hash(url: str):
-    # Find the starting position of 'query_hash='
-    start_pos = url.find("query_hash=")
-    if start_pos == -1:
-        return ""
-    start_pos += len("query_hash=")
-    # Find the ending position of the hash (either end of string or next parameter)
-    end_pos = url.find("&", start_pos)
-    if end_pos == -1:
-        end_pos = len(url)
-    # Extract the query hash
-    query_hash = url[start_pos:end_pos]
-    return query_hash
-
-
-def _curate_labels(labels):
-    curated_labels = []
-    for label in labels:
-        if "tlp:" in label:
-            continue
-        label_value = label
-        if '="' in label:
-            label_value_split = label.split('="')
-            label_value = label_value_split[1][:-1].strip()
-        elif ":" in label:
-            label_value_split = label.split(":")
-            label_value = label_value_split[1].strip()
-        if label_value.isdigit():
-            if ":" in label:
-                label_value_split = label.split(":")
-                label_value = label_value_split[1].strip()
-            else:
-                label_value = label
-        if '="' in label_value:
-            label_value = label_value.replace('="', "-")[:-1]
-        curated_labels.append(label_value)
-    curated_labels = [
-        label
-        for label in curated_labels
-        if label is not None and len(label) > 0
-    ]
-    return curated_labels
-
-
-class OrangeCyberDefense:
+class OrangeCyberdefense:
     def __init__(self):
+        self._init_config()
+        self._init_variables()
+
+        # Check Datalake API permissions
+        if (
+            self.ocd_import_datalake
+            or self.ocd_import_threat_library
+            or (
+                self.ocd_import_worldwatch
+                and (
+                    self.ocd_worldwatch_import_indicators
+                    or self.ocd_worldwatch_import_threat_entities
+                )
+            )
+        ):
+            self._init_datalake_instance()
+            if not self._check_permissions():
+                raise ValueError(
+                    "The provided Datalake token does not have 'bulk_search'"
+                    " permission."
+                )
+
+    def _init_config(self):
         config_file_path = (
             os.path.dirname(os.path.abspath(__file__)) + "/config.yml"
         )
@@ -204,22 +83,18 @@ class OrangeCyberDefense:
         else:
             config = {}
 
-        defaults = {
-            "connector": {
-                "name": "Orange Cyberdefense Cyber Threat Intelligence",
-                "log_level": "info",
-            }
+        connector_default_config = {
+            "name": "Orange Cyberdefense Cyber Threat Intelligence",
+            "log_level": "info",
         }
 
         config["connector"] = {
-            **defaults["connector"],
+            **connector_default_config,
             **config.get("connector", {}),
         }
         config["connector"]["type"] = "EXTERNAL_IMPORT"
         config["connector"]["scope"] = "ocd"
-        self.helper = OpenCTIConnectorHelper(
-            config
-        )  # Set config, then overwrite some with env variables
+        self.helper = OpenCTIConnectorHelper(config)
 
         # OCD_IMPORT_DATALAKE
         self.ocd_import_datalake = get_config_variable(
@@ -593,7 +468,7 @@ class OrangeCyberDefense:
                 " 'OCD_WORLDWATCH_IMPORT_THREAT_ENTITIES' is enabled."
             )
 
-        # Init variables
+    def _init_variables(self):
         if self.ocd_datalake_add_createdby or self.ocd_import_worldwatch:
             self.identity = self.helper.api.identity.create(
                 type="Organization", name="Orange Cyberdefense"
@@ -608,27 +483,11 @@ class OrangeCyberDefense:
         )
         self.cache = {}
 
-        # Check Datalake API permissions
-        if (
-            self.ocd_import_datalake
-            or self.ocd_import_threat_library
-            or (
-                self.ocd_import_worldwatch
-                and (
-                    self.ocd_worldwatch_import_indicators
-                    or self.ocd_worldwatch_import_threat_entities
-                )
-            )
-        ):
-            self.datalake_instance = Datalake(
-                longterm_token=self.ocd_datalake_token,
-                env=self.ocd_datalake_env,
-            )
-            if not self._check_permissions():
-                raise ValueError(
-                    "The provided Datalake token does not have 'bulk_search'"
-                    " permission."
-                )
+    def _init_datalake_instance(self):
+        self.datalake_instance = Datalake(
+            longterm_token=self.ocd_datalake_token,
+            env=self.ocd_datalake_env,
+        )
 
     def _check_permissions(self):
         user_info = self.datalake_instance.MyAccount.me()
@@ -638,9 +497,82 @@ class OrangeCyberDefense:
         )
         return has_bulk_search_permission
 
+    def _generate_indicator_markdown(self, indicator_object):
+        """Generates a string containing a markdown summary from a given indicator."""
+
+        # Print scores table
+        markdown_str = "## Threat scores\n"
+        markdown_str += (
+            "| DDoS | Fraud | Hack | Leak | Malware | Phishing | Scam | Scan |"
+            " Spam |\n"
+        )
+        markdown_str += "|------|-------|------|------|---------|----------|------|------|------|\n"
+
+        threat_scores = indicator_object.get("x_datalake_score", {})
+        ddos = threat_scores.get("ddos", "-")
+        fraud = threat_scores.get("fraud", "-")
+        hack = threat_scores.get("hack", "-")
+        leak = threat_scores.get("leak", "-")
+        malware = threat_scores.get("malware", "-")
+        phishing = threat_scores.get("phishing", "-")
+        scam = threat_scores.get("scam", "-")
+        scan = threat_scores.get("scan", "-")
+        spam = threat_scores.get("spam", "-")
+
+        markdown_str += (
+            f"| {ddos} | {fraud} | {hack} | {leak} | {malware} | {phishing} |"
+            f" {scam} | {scan} | {spam} |\n"
+        )
+        markdown_str += "## Threat intelligence sources\n"
+        markdown_str += (
+            "| source_id | count | first_seen | last_updated | min_depth |"
+            " max_depth |\n"
+        )
+        markdown_str += "|-----------|-------|------------|--------------|-----------|-----------|\n"
+
+        # Print threat sources table
+        threat_sources = indicator_object.get("x_datalake_sources", [])
+        threat_sources.sort(
+            key=lambda x: x.get("last_updated", ""), reverse=True
+        )
+
+        for source in threat_sources:
+            source_id = source.get("source_id", "-")
+            count = source.get("count", "-")
+            first_seen = source.get("first_seen", "-")
+            if first_seen != "-":
+                first_seen = datetime.datetime.fromisoformat(
+                    first_seen.rstrip("Z")
+                ).strftime("%Y-%m-%d %H:%M")
+            last_updated = source.get("last_updated", "-")
+            if last_updated != "-":
+                last_updated = datetime.datetime.fromisoformat(
+                    last_updated.rstrip("Z")
+                ).strftime("%Y-%m-%d %H:%M")
+            min_depth = source.get("min_depth", "-")
+            max_depth = source.get("max_depth", "-")
+            markdown_str += (
+                f"| {source_id} | {count} | {first_seen} | {last_updated} |"
+                f" {min_depth} | {max_depth} |\n"
+            )
+
+        # Print whitelists table
+        whitelist_sources = indicator_object.get(
+            "x_datalake_whitelist_sources", []
+        )
+        if len(whitelist_sources) > 0:
+            markdown_str += "## Whitelist sources\n"
+            markdown_str += "| source_id |\n"
+            markdown_str += "|-----------|\n"
+        for source in whitelist_sources:
+            source_id = source.get("source_id", "-")
+            markdown_str += f"| {source_id} |\n"
+
+        return markdown_str
+
     def _generate_indicator_note(self, indicator_object):
         creation_date = indicator_object.get("created", {})
-        technical_md = generate_markdown_table(indicator_object)
+        technical_md = self._generate_indicator_markdown(indicator_object)
         note_stix = stix2.Note(
             id=Note.generate_id(creation_date, technical_md),
             confidence=self.helper.connect_confidence_level,
@@ -653,11 +585,6 @@ class OrangeCyberDefense:
             object_refs=[indicator_object.get("id")],
         )
         return note_stix
-
-    def _get_ranged_score(self, score: int):
-        if score == 100:
-            return 90
-        return (score // 10) * 10
 
     def _process_object(self, stix_obj):
 
@@ -673,12 +600,12 @@ class OrangeCyberDefense:
         }
         if "labels" in stix_obj and self.ocd_datalake_add_tlp:
             for label in stix_obj["labels"]:
-                if label in dict_label_to_object_marking_refs.keys():
+                if label in dict_label_to_object_marking_refs:
                     stix_obj["object_marking_refs"] = (
                         dict_label_to_object_marking_refs[label]
                     )
         if "labels" in stix_obj and self.ocd_datalake_curate_labels:
-            stix_obj["labels"] = _curate_labels(stix_obj["labels"])
+            stix_obj["labels"] = utils.curate_labels(stix_obj["labels"])
         if not self.ocd_datalake_add_tags_as_labels:
             stix_obj["labels"] = []
         if "confidence" not in stix_obj:
@@ -690,10 +617,7 @@ class OrangeCyberDefense:
             else:
                 if self.ocd_datalake_ignore_unscored_indicators:
                     return None
-                else:
-                    stix_obj["x_opencti_score"] = (
-                        self.ocd_datalake_fallback_score
-                    )
+                stix_obj["x_opencti_score"] = self.ocd_datalake_fallback_score
         if (
             stix_obj.get("x_datalake_whitelist_sources")
             and self.ocd_datalake_ignore_whitelisted_indicators
@@ -752,7 +676,7 @@ class OrangeCyberDefense:
             if self.ocd_datalake_add_scores_as_labels:
                 threat_scores = stix_obj.get("x_datalake_score", {})
                 for threat_type, score in threat_scores.items():
-                    ranged_score = self._get_ranged_score(score)
+                    ranged_score = utils.get_ranged_score(score)
                     new_label = f"dtl_{threat_type}_{ranged_score}"
                     if "labels" not in stix_obj:
                         stix_obj["labels"] = []
@@ -885,7 +809,7 @@ class OrangeCyberDefense:
                 )
 
         # we remove duplicates, after processing because processing may affect id
-        stix_objects = list(keep_first(stix_objects, "id"))
+        stix_objects = list(utils.keep_first(stix_objects, "id"))
         return stix_objects
 
     def _get_report_entities(self, tags: Iterable[str]):
@@ -1069,7 +993,7 @@ class OrangeCyberDefense:
                 self.helper.log_info(
                     f"{prefix} Getting report IOCs from Datalake..."
                 )
-                hashkey = extract_datalake_query_hash(
+                hashkey = utils.extract_datalake_query_hash(
                     report["datalake_url"]["url"]
                 )
                 if hashkey:
@@ -1379,7 +1303,7 @@ class OrangeCyberDefense:
                 )
 
         # we remove duplicates, after processing because processing may affect id
-        objects = list(keep_first(objects, "id"))
+        objects = list(utils.keep_first(objects, "id"))
         # Create a bundle of the processed objects
         self.helper.log_info(
             f"{prefix} Got {len(objects)} stix objects from query"
@@ -1565,7 +1489,7 @@ class OrangeCyberDefense:
 
 if __name__ == "__main__":
     try:
-        ocdConnector = OrangeCyberDefense()
+        ocdConnector = OrangeCyberdefense()
         ocdConnector.run()
     except Exception:
         import traceback
