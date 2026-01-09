@@ -1,7 +1,6 @@
 import datetime
 import json
 import os
-import re
 import sys
 
 import stix2
@@ -12,124 +11,11 @@ from pycti import (
     Note,
     OpenCTIConnectorHelper,
     OpenCTIStix2,
+    StixCoreRelationship,
     get_config_variable,
 )
 
-
-def _curate_labels(labels):
-    curated_labels = []
-    for label in labels:
-        if "tlp:" in label:
-            continue
-        label_value = label
-        if '="' in label:
-            label_value_split = label.split('="')
-            label_value = label_value_split[1][:-1].strip()
-        elif ":" in label:
-            label_value_split = label.split(":")
-            label_value = label_value_split[1].strip()
-        if label_value.isdigit():
-            if ":" in label:
-                label_value_split = label.split(":")
-                label_value = label_value_split[1].strip()
-            else:
-                label_value = label
-        if '="' in label_value:
-            label_value = label_value.replace('="', "-")[:-1]
-        label_value = re.sub(r"\s+", "_", label_value.strip().lower())
-
-        curated_labels.append(label_value)
-    curated_labels = [
-        label for label in curated_labels if label is not None and len(label) > 0
-    ]
-    return curated_labels
-
-
-def _get_ranged_score(score: int):
-    if score == 100:
-        return 90
-    return (score // 10) * 10
-
-
-def _generate_markdown_table(data):
-
-    # Print scores table
-    markdown_str = "## Threat scores\n"
-    markdown_str += (
-        "| DDoS | Fraud | Hack | Leak | Malware | Phishing | Scam | Scan | Spam |\n"
-    )
-    markdown_str += (
-        "|------|-------|------|------|---------|----------|------|------|------|\n"
-    )
-
-    threat_scores = data.get("x_datalake_score", {})
-    ddos = threat_scores.get("ddos", "-")
-    fraud = threat_scores.get("fraud", "-")
-    hack = threat_scores.get("hack", "-")
-    leak = threat_scores.get("leak", "-")
-    malware = threat_scores.get("malware", "-")
-    phishing = threat_scores.get("phishing", "-")
-    scam = threat_scores.get("scam", "-")
-    scan = threat_scores.get("scan", "-")
-    spam = threat_scores.get("spam", "-")
-
-    markdown_str += f"| {ddos} | {fraud} | {hack} | {leak} | {malware} | {phishing} | {scam} | {scan} | {spam} |\n"
-    markdown_str += "## Threat intelligence sources\n"
-    markdown_str += (
-        "| source_id | count | first_seen | last_updated | min_depth | max_depth |\n"
-    )
-    markdown_str += (
-        "|-----------|-------|------------|--------------|-----------|-----------|\n"
-    )
-
-    # Print threat sources table
-    threat_sources = data.get("x_datalake_sources", [])
-    threat_sources.sort(key=lambda x: x.get("last_updated", ""), reverse=True)
-
-    for source in threat_sources:
-        source_id = source.get("source_id", "-")
-        count = source.get("count", "-")
-        first_seen = source.get("first_seen", "-")
-        if first_seen != "-":
-            first_seen = datetime.datetime.fromisoformat(
-                first_seen.rstrip("Z")
-            ).strftime("%Y-%m-%d %H:%M")
-        last_updated = source.get("last_updated", "-")
-        if last_updated != "-":
-            last_updated = datetime.datetime.fromisoformat(
-                last_updated.rstrip("Z")
-            ).strftime("%Y-%m-%d %H:%M")
-        min_depth = source.get("min_depth", "-")
-        max_depth = source.get("max_depth", "-")
-        markdown_str += f"| {source_id} | {count} | {first_seen} | {last_updated} | {min_depth} | {max_depth} |\n"
-
-    # Print whitelists table
-    whitelist_sources = data.get("x_datalake_whitelist_sources", [])
-    if len(whitelist_sources) > 0:
-        markdown_str += "## Whitelist sources\n"
-        markdown_str += "| source_id |\n"
-        markdown_str += "|-----------|\n"
-    for source in whitelist_sources:
-        source_id = source.get("source_id", "-")
-        markdown_str += f"| {source_id} |\n"
-
-    return markdown_str
-
-
-def get_atom_type(observable_type: str):
-    mapping = {
-        "Autonomous-System": AtomType.AS,
-        "Domain-Name": AtomType.DOMAIN,
-        "Email-Addr": AtomType.EMAIL,
-        "IPv4-Addr": AtomType.IP,
-        "IPv6-Addr": AtomType.IP,
-        "Phone-Number": AtomType.PHONE_NUMBER,
-        "Url": AtomType.URL,
-        "X509-Certificate": AtomType.CERTIFICATE,
-        "StixFile": AtomType.FILE,
-        "Cryptocurrency-Wallet": AtomType.CRYPTO,
-    }
-    return mapping.get(observable_type, None)
+import utils
 
 
 def validate_scope(value: str) -> str:
@@ -147,7 +33,9 @@ def validate_scope(value: str) -> str:
     }
     scope_splitted = [scope.strip().lower() for scope in value.split(",")]
     valid_scope = [
-        available_values[scope] for scope in scope_splitted if scope in available_values
+        available_values[scope]
+        for scope in scope_splitted
+        if scope in available_values
     ]
 
     if not valid_scope:
@@ -161,6 +49,11 @@ def validate_scope(value: str) -> str:
 
 class OrangeCyberdefenseEnrichment:
     def __init__(self):
+        self._init_config()
+        self._init_variables()
+        self._init_datalake_instance()
+
+    def _init_config(self):
         config_file_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "/config.yml"
         )
@@ -170,24 +63,40 @@ class OrangeCyberdefenseEnrichment:
         else:
             config = {}
 
-        defaults = {
-            "connector": {
-                "name": "Orange Cyberdefense CTI Enrichment",
-                "scope": "IPv4-Addr,IPv6-Addr,Domain-Name,URL,Email-Addr,Autonomous-System,X509-Certificate,Cryptocurrency-Wallet,StixFile,Phone-Number",
-                "auto": False,
-                "log_level": "info",
-            }
+        connector_default_config = {
+            "name": "Orange Cyberdefense CTI Enrichment",
+            "scope": (
+                "IPv4-Addr,",
+                "IPv6-Addr,",
+                "Domain-Name,",
+                "URL,",
+                "Email-Addr,",
+                "Autonomous-System,",
+                "X509-Certificate,",
+                "Cryptocurrency-Wallet,",
+                "StixFile,",
+                "Phone-Number",
+            ),
+            "auto": False,
+            "log_level": "info",
         }
 
-        config["connector"] = {**defaults["connector"], **config.get("connector", {})}
+        config["connector"] = {
+            **connector_default_config,
+            **config.get("connector", {}),
+        }
 
-        config["connector"]["scope"] = validate_scope(config["connector"]["scope"])
+        config["connector"]["scope"] = validate_scope(
+            config["connector"]["scope"]
+        )
         config["connector"]["type"] = "INTERNAL_ENRICHMENT"
 
         self.helper = OpenCTIConnectorHelper(config)
 
         self.ocd_enrich_datalake_token = get_config_variable(
-            "OCD_ENRICH_DATALAKE_TOKEN", ["ocd_enrich", "datalake_token"], config
+            "OCD_ENRICH_DATALAKE_TOKEN",
+            ["ocd_enrich", "datalake_token"],
+            config,
         )
 
         self.ocd_enrich_datalake_env = get_config_variable(
@@ -219,11 +128,17 @@ class OrangeCyberdefenseEnrichment:
         )
 
         self.ocd_enrich_add_score = get_config_variable(
-            "OCD_ENRICH_ADD_SCORE", ["ocd_enrich", "add_score"], config, default=True
+            "OCD_ENRICH_ADD_SCORE",
+            ["ocd_enrich", "add_score"],
+            config,
+            default=True,
         )
 
         self.ocd_enrich_add_extref = get_config_variable(
-            "OCD_ENRICH_ADD_EXTREF", ["ocd_enrich", "add_extref"], config, default=True
+            "OCD_ENRICH_ADD_EXTREF",
+            ["ocd_enrich", "add_extref"],
+            config,
+            default=True,
         )
 
         self.ocd_enrich_add_summary = get_config_variable(
@@ -255,9 +170,13 @@ class OrangeCyberdefenseEnrichment:
         )
 
         self.max_tlp = get_config_variable(
-            "OCD_ENRICH_MAX_TLP", ["ocd_enrich", "max_tlp"], config, default="TLP:AMBER"
+            "OCD_ENRICH_MAX_TLP",
+            ["ocd_enrich", "max_tlp"],
+            config,
+            default="TLP:AMBER",
         )
 
+    def _init_variables(self):
         if self.ocd_enrich_add_createdby:
             self.identity = self.helper.api.identity.create(
                 type="Organization",
@@ -271,29 +190,33 @@ class OrangeCyberdefenseEnrichment:
             x_opencti_order=99,
             x_opencti_color="#ff7900",
         )
+        self.cache = {}
 
-        self.dtl = Datalake(
+    def _init_datalake_instance(self):
+        self.datalake_instance = Datalake(
             longterm_token=self.ocd_enrich_datalake_token,
             env=self.ocd_enrich_datalake_env,
         )
 
     def _process_object(self, stix_obj):
-
         dict_label_to_object_marking_refs = {
             "tlp:clear": [stix2.TLP_WHITE.get("id")],
             "tlp:white": [stix2.TLP_WHITE.get("id")],
             "tlp:green": [stix2.TLP_GREEN.get("id")],
-            "tlp:amber": [stix2.TLP_AMBER.get("id"), self.marking["standard_id"]],
+            "tlp:amber": [
+                stix2.TLP_AMBER.get("id"),
+                self.marking["standard_id"],
+            ],
             "tlp:red": [stix2.TLP_RED.get("id"), self.marking["standard_id"]],
         }
         if "labels" in stix_obj:
             for label in stix_obj["labels"]:
-                if label in dict_label_to_object_marking_refs.keys():
-                    stix_obj["object_marking_refs"] = dict_label_to_object_marking_refs[
-                        label
-                    ]
+                if label in dict_label_to_object_marking_refs:
+                    stix_obj["object_marking_refs"] = (
+                        dict_label_to_object_marking_refs[label]
+                    )
         if "labels" in stix_obj and self.ocd_enrich_add_tags_as_labels:
-            stix_obj["labels"] = _curate_labels(stix_obj["labels"])
+            stix_obj["labels"] = utils.curate_labels(stix_obj["labels"])
         else:
             stix_obj["labels"] = []
         if "confidence" not in stix_obj:
@@ -308,9 +231,9 @@ class OrangeCyberdefenseEnrichment:
             external_references = []
             for external_reference in stix_obj["external_references"]:
                 if "url" in external_reference:
-                    external_reference["url"] = external_reference["url"].replace(
-                        "api/v3/mrti/threats", "gui/threat"
-                    )
+                    external_reference["url"] = external_reference[
+                        "url"
+                    ].replace("api/v3/mrti/threats", "gui/threat")
                     external_references.append(external_reference)
                 else:
                     external_references.append(external_reference)
@@ -322,7 +245,9 @@ class OrangeCyberdefenseEnrichment:
             and self.ocd_enrich_threat_actor_as_intrusion_set
         ):
             stix_obj["type"] = "intrusion-set"
-            stix_obj["id"] = stix_obj["id"].replace("threat-actor", "intrusion-set")
+            stix_obj["id"] = stix_obj["id"].replace(
+                "threat-actor", "intrusion-set"
+            )
         if stix_obj["type"] == "relationship":
             if self.ocd_enrich_threat_actor_as_intrusion_set:
                 stix_obj["source_ref"] = stix_obj["source_ref"].replace(
@@ -331,16 +256,20 @@ class OrangeCyberdefenseEnrichment:
                 stix_obj["target_ref"] = stix_obj["target_ref"].replace(
                     "threat-actor", "intrusion-set"
                 )
-        if stix_obj["type"] == "indicator" and self.ocd_enrich_add_scores_as_labels:
+        if (
+            stix_obj["type"] == "indicator"
+            and self.ocd_enrich_add_scores_as_labels
+        ):
             stix_obj["pattern"] = stix_obj["pattern"].replace(
-                "[x-phone-number:international_phone_number", "[phone-number:value"
+                "[x-phone-number:international_phone_number",
+                "[phone-number:value",
             )
             stix_obj["pattern"] = stix_obj["pattern"].replace(
                 "[x-crypto:value", "[cryptocurrency-wallet:value"
             )
             threat_scores = stix_obj.get("x_datalake_score", {})
             for threat_type, score in threat_scores.items():
-                ranged_score = _get_ranged_score(score)
+                ranged_score = utils.get_ranged_score(score)
                 new_label = f"dtl_{threat_type}_{ranged_score}"
                 if "labels" not in stix_obj:
                     stix_obj["labels"] = []
@@ -349,9 +278,82 @@ class OrangeCyberdefenseEnrichment:
             return None
         return stix_obj
 
+    def _generate_indicator_markdown(self, indicator_object):
+        """Generates a string containing a markdown summary from a given indicator."""
+
+        # Generate threat scores table
+        markdown_str = "## Threat scores\n"
+        markdown_str += (
+            "| DDoS | Fraud | Hack | Leak | Malware | Phishing | Scam | Scan |"
+            " Spam |\n"
+        )
+        markdown_str += "|------|-------|------|------|---------|----------|------|------|------|\n"
+
+        threat_scores = indicator_object.get("x_datalake_score", {})
+        ddos = threat_scores.get("ddos", "-")
+        fraud = threat_scores.get("fraud", "-")
+        hack = threat_scores.get("hack", "-")
+        leak = threat_scores.get("leak", "-")
+        malware = threat_scores.get("malware", "-")
+        phishing = threat_scores.get("phishing", "-")
+        scam = threat_scores.get("scam", "-")
+        scan = threat_scores.get("scan", "-")
+        spam = threat_scores.get("spam", "-")
+
+        markdown_str += (
+            f"| {ddos} | {fraud} | {hack} | {leak} | {malware} | {phishing} |"
+            f" {scam} | {scan} | {spam} |\n"
+        )
+
+        # Generate threat intelligence sources table
+        markdown_str += "## Threat intelligence sources\n"
+        markdown_str += (
+            "| source_id | count | first_seen | last_updated | min_depth |"
+            " max_depth |\n"
+        )
+        markdown_str += "|-----------|-------|------------|--------------|-----------|-----------|\n"
+        threat_sources = indicator_object.get("x_datalake_sources", [])
+        threat_sources.sort(
+            key=lambda x: x.get("last_updated", ""), reverse=True
+        )
+
+        for source in threat_sources:
+            source_id = source.get("source_id", "-")
+            count = source.get("count", "-")
+            first_seen = source.get("first_seen", "-")
+            if first_seen != "-":
+                first_seen = datetime.datetime.fromisoformat(
+                    first_seen.rstrip("Z")
+                ).strftime("%Y-%m-%d %H:%M")
+            last_updated = source.get("last_updated", "-")
+            if last_updated != "-":
+                last_updated = datetime.datetime.fromisoformat(
+                    last_updated.rstrip("Z")
+                ).strftime("%Y-%m-%d %H:%M")
+            min_depth = source.get("min_depth", "-")
+            max_depth = source.get("max_depth", "-")
+            markdown_str += (
+                f"| {source_id} | {count} | {first_seen} | {last_updated} |"
+                f" {min_depth} | {max_depth} |\n"
+            )
+
+        # Generate whitelist sources table
+        whitelist_sources = indicator_object.get(
+            "x_datalake_whitelist_sources", []
+        )
+        if len(whitelist_sources) > 0:
+            markdown_str += "## Whitelist sources\n"
+            markdown_str += "| source_id |\n"
+            markdown_str += "|-----------|\n"
+        for source in whitelist_sources:
+            source_id = source.get("source_id", "-")
+            markdown_str += f"| {source_id} |\n"
+
+        return markdown_str
+
     def _generate_observable_note(self, indicator_object, stix_entity):
         creation_date = indicator_object.get("created", {})
-        technical_md = _generate_markdown_table(indicator_object)
+        technical_md = self._generate_indicator_markdown(indicator_object)
         note_stix = stix2.Note(
             id=Note.generate_id(creation_date, technical_md),
             confidence=self.helper.connect_confidence_level,
@@ -379,15 +381,16 @@ class OrangeCyberdefenseEnrichment:
 
         if not OpenCTIConnectorHelper.check_max_tlp(tlp, self.max_tlp):
             self.helper.log_info(
-                f"Not enriching {value} because {tlp} is higher than {self.max_tlp}"
+                f"Not enriching {value} because {tlp} is higher than"
+                f" {self.max_tlp}"
             )
             return
 
-        atom_type = get_atom_type(observable["entity_type"])
+        atom_type = utils.get_atom_type(observable["entity_type"])
         if observable["entity_type"] == "IPv4-Addr" and "/" in value:
             atom_type = AtomType.IP_RANGE
 
-        data = self.dtl.Threats.lookup(
+        data = self.datalake_instance.Threats.lookup(
             atom_value=value,
             atom_type=atom_type,
             output=Output.STIX,
@@ -399,6 +402,7 @@ class OrangeCyberdefenseEnrichment:
 
         self.helper.log_info(f"Match found for {value}")
 
+        indicator_object = {}
         related_objects = []
         for stix_obj in data["objects"]:
             if stix_obj["type"] == "indicator":
@@ -413,11 +417,10 @@ class OrangeCyberdefenseEnrichment:
 
         threat_scores = indicator_object.get("x_datalake_score", {})
         for threat_type, score in threat_scores.items():
-            ranged_score = _get_ranged_score(score)
+            ranged_score = utils.get_ranged_score(score)
             new_label = f"dtl_{threat_type}_{ranged_score}"
             labels.append(new_label)
-            if score > max_score:
-                max_score = score
+            max_score = max(max_score, score)
 
         if self.ocd_enrich_add_score and max_score != -1:
             OpenCTIStix2.put_attribute_in_extension(
@@ -435,7 +438,7 @@ class OrangeCyberdefenseEnrichment:
                 )
 
         if self.ocd_enrich_add_tags_as_labels:
-            labels = _curate_labels(indicator_object.get("labels", []))
+            labels = utils.curate_labels(indicator_object.get("labels", []))
             for label in labels:
                 OpenCTIStix2.put_attribute_in_extension(
                     stix_entity,
@@ -446,18 +449,22 @@ class OrangeCyberdefenseEnrichment:
                 )
 
         if self.ocd_enrich_add_extref:
-            for external_reference in indicator_object.get("external_references", []):
+            for external_reference in indicator_object.get(
+                "external_references", []
+            ):
                 if "url" in external_reference:
                     try:
-                        external_reference["url"] = external_reference["url"].replace(
-                            "api/v3/mrti/threats", "gui/threat"
-                        )
+                        external_reference["url"] = external_reference[
+                            "url"
+                        ].replace("api/v3/mrti/threats", "gui/threat")
                         ext_ref = self.helper.api.external_reference.create(
                             source_name=external_reference.get(
                                 "source_name", "Orange Cyberdefense"
                             ),
                             url=external_reference["url"],
-                            external_id=external_reference.get("external_id", None),
+                            external_id=external_reference.get(
+                                "external_id", None
+                            ),
                         )
                         self.helper.api.stix_cyber_observable.add_external_reference(
                             id=stix_entity["id"],
@@ -475,11 +482,18 @@ class OrangeCyberdefenseEnrichment:
                 )
                 stix_objects.append(json.loads(note_stix.serialize()))
             except Exception as e:
-                self.helper.log_error(f"Unable to create enrichment note: {str(e)}")
+                self.helper.log_error(
+                    f"Unable to create enrichment note: {str(e)}"
+                )
 
         if self.ocd_enrich_add_related:
             stix_objects.extend(related_objects)
             relationship = stix2.Relationship(
+                id=StixCoreRelationship.generate_id(
+                    relationship_type="based-on",
+                    source_ref=indicator_object["id"],
+                    target_ref=stix_entity["id"],
+                ),
                 relationship_type="based-on",
                 source_ref=indicator_object["id"],
                 target_ref=stix_entity["id"],
