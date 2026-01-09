@@ -1,5 +1,9 @@
 # CERT Orange Cyberdefense CTI Enrichment Connector
 
+| Status | Date | Comment |
+|--------|------|---------|
+| Partner | -    | -       |
+
 ## Summary
 
 This connector supports enrichment of OpenCTI observables via Datalake, a subscription based CTI platform powered by [Orange Cyberdefense](https://www.orangecyberdefense.com).
