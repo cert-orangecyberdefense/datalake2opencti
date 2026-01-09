@@ -4,4 +4,4 @@
 cd /opt/opencti-connector-orange-cyberdefense-v3
 
 # Start the connector
-python3 orange-cyberdefense.py
+python3 main.py
