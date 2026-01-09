@@ -1,5 +1,9 @@
 # CERT Orange Cyberdefense CTI Connector
 
+| Status | Date | Comment |
+|--------|------|---------|
+| Partner | -    | -       |
+
 ## Summary
 
 This connector allows you to ingest Orange Cyberdefense Datalake indicators to OpenCTI. Datalake is a subscription based CTI platform powered by [Orange Cyberdefense](https://www.orangecyberdefense.com).

@@ -1,9 +1,10 @@
 opencti:
-  url: 'http://localhost:8080'
+  url: 'http://localhost'
   token: 'ChangeMe'
 
 
 connector:
+  type: 'EXTERNAL_IMPORT'
   id: 'connector-orange-cyberdefense'
   name: 'Orange Cyberdefense Cyber Threat Intelligence'
   log_level: 'info'
