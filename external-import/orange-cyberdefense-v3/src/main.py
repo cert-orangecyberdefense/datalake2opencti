@@ -575,7 +575,6 @@ class OrangeCyberdefense:
         technical_md = self._generate_indicator_markdown(indicator_object)
         note_stix = stix2.Note(
             id=Note.generate_id(creation_date, technical_md),
-            confidence=self.helper.connect_confidence_level,
             abstract="CERT Orange Cyberdefense threat summary",
             content=technical_md,
             created=creation_date,
@@ -586,8 +585,9 @@ class OrangeCyberdefense:
         )
         return note_stix
 
-    def _process_object(self, stix_obj):
-
+    def _process_object_tlps(self, stix_obj):
+        if not self.ocd_datalake_add_tlp:
+            return
         dict_label_to_object_marking_refs = {
             "tlp:clear": [stix2.TLP_WHITE.get("id")],
             "tlp:white": [stix2.TLP_WHITE.get("id")],
@@ -596,42 +596,39 @@ class OrangeCyberdefense:
                 stix2.TLP_AMBER.get("id"),
                 self.marking["standard_id"],
             ],
+            "tlp:amber+strict": [
+                stix2.TLP_AMBER.get("id"),
+                self.marking["standard_id"],
+            ],
             "tlp:red": [stix2.TLP_RED.get("id"), self.marking["standard_id"]],
         }
-        if "labels" in stix_obj and self.ocd_datalake_add_tlp:
-            for label in stix_obj["labels"]:
-                if label in dict_label_to_object_marking_refs:
-                    stix_obj["object_marking_refs"] = (
-                        dict_label_to_object_marking_refs[label]
-                    )
-        if "labels" in stix_obj and self.ocd_datalake_curate_labels:
-            stix_obj["labels"] = utils.curate_labels(stix_obj["labels"])
+        for label in stix_obj["labels"]:
+            if label in dict_label_to_object_marking_refs:
+                stix_obj["object_marking_refs"] = (
+                    dict_label_to_object_marking_refs[label]
+                )
+
+    def _process_object_labels(self, stix_obj):
         if not self.ocd_datalake_add_tags_as_labels:
             stix_obj["labels"] = []
-        if "confidence" not in stix_obj:
-            stix_obj["confidence"] = self.helper.connect_confidence_level
+        elif self.ocd_datalake_curate_labels:
+            stix_obj["labels"] = utils.curate_labels(stix_obj["labels"])
+
+    def _process_object_scores(self, stix_obj):
         if "x_datalake_score" in stix_obj and self.ocd_datalake_add_score:
             scores = list(stix_obj["x_datalake_score"].values())
             if len(scores) > 0:
                 stix_obj["x_opencti_score"] = max(scores)
             else:
-                if self.ocd_datalake_ignore_unscored_indicators:
-                    return None
                 stix_obj["x_opencti_score"] = self.ocd_datalake_fallback_score
-        if (
-            stix_obj.get("x_datalake_whitelist_sources")
-            and self.ocd_datalake_ignore_whitelisted_indicators
-        ):
-            return None
-        if (
-            "x_datalake_atom_type" in stix_obj
-            and stix_obj["x_datalake_atom_type"] in atom_types_mapping
-        ):
-            stix_obj["x_opencti_main_observable_type"] = atom_types_mapping[
-                stix_obj["x_datalake_atom_type"]
-            ]
-        if not self.ocd_datalake_add_createdby:
-            stix_obj.pop("created_by_ref", None)
+        if self.ocd_datalake_add_scores_as_labels:
+            threat_scores = stix_obj.get("x_datalake_score", {})
+            for threat_type, score in threat_scores.items():
+                ranged_score = utils.get_ranged_score(score)
+                new_label = f"dtl_{threat_type}_{ranged_score}"
+                stix_obj["labels"].append(new_label)
+
+    def _process_object_extrefs(self, stix_obj):
         if "external_references" in stix_obj and self.ocd_datalake_add_extref:
             external_references = []
             for external_reference in stix_obj["external_references"]:
@@ -646,7 +643,8 @@ class OrangeCyberdefense:
         else:
             stix_obj["external_references"] = []
 
-        # Type specific operations
+    def _process_object_translate(self, stix_obj):
+        # Translate Threat Actor entities to Intrusion Set entities
         if (
             stix_obj["type"] == "threat-actor"
             and self.ocd_datalake_threat_actor_as_intrusion_set
@@ -663,6 +661,8 @@ class OrangeCyberdefense:
                 stix_obj["target_ref"] = stix_obj["target_ref"].replace(
                     "threat-actor", "intrusion-set"
                 )
+
+        # Translate indicator pattern for phone and crypto
         if stix_obj["type"] == "indicator":
             stix_obj["pattern"] = stix_obj["pattern"].replace(
                 "[x-phone-number:international_phone_number",
@@ -671,21 +671,51 @@ class OrangeCyberdefense:
             stix_obj["pattern"] = stix_obj["pattern"].replace(
                 "[x-crypto:value", "[cryptocurrency-wallet:value"
             )
-            if self.ocd_datalake_create_observables:
-                stix_obj["x_opencti_create_observables"] = True
-            if self.ocd_datalake_add_scores_as_labels:
-                threat_scores = stix_obj.get("x_datalake_score", {})
-                for threat_type, score in threat_scores.items():
-                    ranged_score = utils.get_ranged_score(score)
-                    new_label = f"dtl_{threat_type}_{ranged_score}"
-                    if "labels" not in stix_obj:
-                        stix_obj["labels"] = []
-                    stix_obj["labels"].append(new_label)
+
+    def _process_object(self, stix_obj):
         if (
             stix_obj["type"] == "sighting"
             and not self.ocd_datalake_add_sightings
         ):
             return None
+        if (
+            stix_obj.get("x_datalake_whitelist_sources")
+            and self.ocd_datalake_ignore_whitelisted_indicators
+        ):
+            return None
+        if (
+            self.ocd_datalake_ignore_unscored_indicators
+            and "x_datalake_score" in stix_obj
+            and len(stix_obj["x_datalake_score"]) == 0
+        ):
+            return None
+
+        if "labels" not in stix_obj:
+            stix_obj["labels"] = []
+
+        if not self.ocd_datalake_add_createdby:
+            stix_obj.pop("created_by_ref", None)
+
+        if (
+            "x_datalake_atom_type" in stix_obj
+            and stix_obj["x_datalake_atom_type"] in atom_types_mapping
+        ):
+            stix_obj["x_opencti_main_observable_type"] = atom_types_mapping[
+                stix_obj["x_datalake_atom_type"]
+            ]
+
+        if (
+            stix_obj["type"] == "indicator"
+            and self.ocd_datalake_create_observables
+        ):
+            stix_obj["x_opencti_create_observables"] = True
+
+        self._process_object_tlps(stix_obj)
+        self._process_object_labels(stix_obj)
+        self._process_object_scores(stix_obj)
+        self._process_object_extrefs(stix_obj)
+        self._process_object_translate(stix_obj)
+
         return stix_obj
 
     def _get_report_iocs(self, datalake_query_hash: str):
