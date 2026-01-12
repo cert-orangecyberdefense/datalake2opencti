@@ -214,14 +214,12 @@ class OrangeCyberdefenseEnrichment:
                 )
 
     def _process_object_labels(self, stix_obj):
-        if "labels" in stix_obj and self.ocd_enrich_add_tags_as_labels:
+        if self.ocd_enrich_add_tags_as_labels:
             stix_obj["labels"] = utils.curate_labels(stix_obj["labels"])
         else:
             stix_obj["labels"] = []
 
     def _process_object_scores(self, stix_obj):
-        if "confidence" not in stix_obj:
-            stix_obj["confidence"] = self.helper.connect_confidence_level
         if "x_datalake_score" in stix_obj:
             scores = list(stix_obj["x_datalake_score"].values())
             if len(scores) > 0:
@@ -230,8 +228,6 @@ class OrangeCyberdefenseEnrichment:
         for threat_type, score in threat_scores.items():
             ranged_score = utils.get_ranged_score(score)
             new_label = f"dtl_{threat_type}_{ranged_score}"
-            if "labels" not in stix_obj:
-                stix_obj["labels"] = []
             stix_obj["labels"].append(new_label)
 
     def _process_object_extrefs(self, stix_obj):
@@ -267,10 +263,7 @@ class OrangeCyberdefenseEnrichment:
                 )
 
         # Translate indicator pattern for phone and crypto
-        if (
-            stix_obj["type"] == "indicator"
-            and self.ocd_enrich_add_scores_as_labels
-        ):
+        if stix_obj["type"] == "indicator":
             stix_obj["pattern"] = stix_obj["pattern"].replace(
                 "[x-phone-number:international_phone_number",
                 "[phone-number:value",
@@ -375,7 +368,6 @@ class OrangeCyberdefenseEnrichment:
         technical_md = self._generate_indicator_markdown(indicator_object)
         note_stix = stix2.Note(
             id=Note.generate_id(creation_date, technical_md),
-            confidence=self.helper.connect_confidence_level,
             abstract="CERT Orange Cyberdefense threat summary",
             content=technical_md,
             created=creation_date,
@@ -516,7 +508,6 @@ class OrangeCyberdefenseEnrichment:
                 relationship_type="based-on",
                 source_ref=indicator_object["id"],
                 target_ref=stix_entity["id"],
-                confidence=self.helper.connect_confidence_level,
                 created_by_ref=(
                     self.identity["standard_id"]
                     if self.ocd_enrich_add_createdby
