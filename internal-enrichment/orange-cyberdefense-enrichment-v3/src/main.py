@@ -54,8 +54,8 @@ class OrangeCyberdefenseEnrichment:
         self._init_datalake_instance()
 
     def _init_config(self):
-        config_file_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "/config.yml"
+        config_file_path = (
+            os.path.dirname(os.path.abspath(__file__)) + "/config.yml"
         )
         if os.path.isfile(config_file_path):
             with open(config_file_path, encoding="utf8") as f:
@@ -66,16 +66,8 @@ class OrangeCyberdefenseEnrichment:
         connector_default_config = {
             "name": "Orange Cyberdefense CTI Enrichment",
             "scope": (
-                "IPv4-Addr,",
-                "IPv6-Addr,",
-                "Domain-Name,",
-                "URL,",
-                "Email-Addr,",
-                "Autonomous-System,",
-                "X509-Certificate,",
-                "Cryptocurrency-Wallet,",
-                "StixFile,",
-                "Phone-Number",
+                """IPv4-Addr,IPv6-Addr,Domain-Name,URL,Email-Addr,Autonomous-System,
+                X509-Certificate,Cryptocurrency-Wallet,StixFile,Phone-Number"""
             ),
             "auto": False,
             "log_level": "info",
@@ -198,7 +190,9 @@ class OrangeCyberdefenseEnrichment:
             env=self.ocd_enrich_datalake_env,
         )
 
-    def _process_object(self, stix_obj):
+    def _process_object_tlps(self, stix_obj):
+        # if not self.ocd_enrich_datalake_add_tlp:
+        #     return
         dict_label_to_object_marking_refs = {
             "tlp:clear": [stix2.TLP_WHITE.get("id")],
             "tlp:white": [stix2.TLP_WHITE.get("id")],
@@ -207,26 +201,40 @@ class OrangeCyberdefenseEnrichment:
                 stix2.TLP_AMBER.get("id"),
                 self.marking["standard_id"],
             ],
+            "tlp:amber+strict": [
+                stix2.TLP_AMBER.get("id"),
+                self.marking["standard_id"],
+            ],
             "tlp:red": [stix2.TLP_RED.get("id"), self.marking["standard_id"]],
         }
-        if "labels" in stix_obj:
-            for label in stix_obj["labels"]:
-                if label in dict_label_to_object_marking_refs:
-                    stix_obj["object_marking_refs"] = (
-                        dict_label_to_object_marking_refs[label]
-                    )
+        for label in stix_obj["labels"]:
+            if label in dict_label_to_object_marking_refs:
+                stix_obj["object_marking_refs"] = (
+                    dict_label_to_object_marking_refs[label]
+                )
+
+    def _process_object_labels(self, stix_obj):
         if "labels" in stix_obj and self.ocd_enrich_add_tags_as_labels:
             stix_obj["labels"] = utils.curate_labels(stix_obj["labels"])
         else:
             stix_obj["labels"] = []
+
+    def _process_object_scores(self, stix_obj):
         if "confidence" not in stix_obj:
             stix_obj["confidence"] = self.helper.connect_confidence_level
         if "x_datalake_score" in stix_obj:
             scores = list(stix_obj["x_datalake_score"].values())
             if len(scores) > 0:
                 stix_obj["x_opencti_score"] = max(scores)
-        if not self.ocd_enrich_add_createdby:
-            stix_obj.pop("created_by_ref", None)
+        threat_scores = stix_obj.get("x_datalake_score", {})
+        for threat_type, score in threat_scores.items():
+            ranged_score = utils.get_ranged_score(score)
+            new_label = f"dtl_{threat_type}_{ranged_score}"
+            if "labels" not in stix_obj:
+                stix_obj["labels"] = []
+            stix_obj["labels"].append(new_label)
+
+    def _process_object_extrefs(self, stix_obj):
         if "external_references" in stix_obj:
             external_references = []
             for external_reference in stix_obj["external_references"]:
@@ -239,7 +247,8 @@ class OrangeCyberdefenseEnrichment:
                     external_references.append(external_reference)
             stix_obj["external_references"] = external_references
 
-        # Type specific operations
+    def _process_object_translate(self, stix_obj):
+        # Translate Threat Actor entities to Intrusion Set entities
         if (
             stix_obj["type"] == "threat-actor"
             and self.ocd_enrich_threat_actor_as_intrusion_set
@@ -256,6 +265,8 @@ class OrangeCyberdefenseEnrichment:
                 stix_obj["target_ref"] = stix_obj["target_ref"].replace(
                     "threat-actor", "intrusion-set"
                 )
+
+        # Translate indicator pattern for phone and crypto
         if (
             stix_obj["type"] == "indicator"
             and self.ocd_enrich_add_scores_as_labels
@@ -267,15 +278,23 @@ class OrangeCyberdefenseEnrichment:
             stix_obj["pattern"] = stix_obj["pattern"].replace(
                 "[x-crypto:value", "[cryptocurrency-wallet:value"
             )
-            threat_scores = stix_obj.get("x_datalake_score", {})
-            for threat_type, score in threat_scores.items():
-                ranged_score = utils.get_ranged_score(score)
-                new_label = f"dtl_{threat_type}_{ranged_score}"
-                if "labels" not in stix_obj:
-                    stix_obj["labels"] = []
-                stix_obj["labels"].append(new_label)
+
+    def _process_object(self, stix_obj):
         if stix_obj["type"] == "sighting" and not self.ocd_enrich_add_sightings:
             return None
+
+        if "labels" not in stix_obj:
+            stix_obj["labels"] = []
+
+        if not self.ocd_enrich_add_createdby:
+            stix_obj.pop("created_by_ref", None)
+
+        self._process_object_tlps(stix_obj)
+        self._process_object_labels(stix_obj)
+        self._process_object_scores(stix_obj)
+        self._process_object_extrefs(stix_obj)
+        self._process_object_translate(stix_obj)
+
         return stix_obj
 
     def _generate_indicator_markdown(self, indicator_object):
