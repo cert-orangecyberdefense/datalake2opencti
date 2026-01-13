@@ -233,7 +233,7 @@ class OrangeCyberdefenseEnrichment:
                 stix_obj["labels"].append(new_label)
 
     def _process_object_extrefs(self, stix_obj):
-        if "external_references" in stix_obj:
+        if "external_references" in stix_obj and self.ocd_enrich_add_extref:
             external_references = []
             for external_reference in stix_obj["external_references"]:
                 if "url" in external_reference:
@@ -244,6 +244,8 @@ class OrangeCyberdefenseEnrichment:
                 else:
                     external_references.append(external_reference)
             stix_obj["external_references"] = external_references
+        else:
+            stix_obj["external_references"] = []
 
     def _process_object_translate(self, stix_obj):
         # Translate Threat Actor entities to Intrusion Set entities
@@ -462,10 +464,8 @@ class OrangeCyberdefenseEnrichment:
                     True,
                 )
 
-        if self.ocd_enrich_add_extref:
-            for external_reference in indicator_object.get(
-                "external_references", []
-            ):
+        if "external_references" in indicator_object and self.ocd_enrich_add_extref:
+            for external_reference in indicator_object["external_references"]:
                 if "url" in external_reference:
                     try:
                         external_reference["url"] = external_reference[
