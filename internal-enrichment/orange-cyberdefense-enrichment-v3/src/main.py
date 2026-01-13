@@ -184,6 +184,13 @@ class OrangeCyberdefenseEnrichment:
             default=True,
         )
 
+        self.ocd_enrich_curate_labels = get_config_variable(
+            "OCD_ENRICH_CURATE_LABELS",
+            ["ocd_enrich", "curate_labels"],
+            config,
+            default=True
+        )
+
         self.max_tlp = get_config_variable(
             "OCD_ENRICH_MAX_TLP",
             ["ocd_enrich", "max_tlp"],
@@ -237,10 +244,10 @@ class OrangeCyberdefenseEnrichment:
                 )
 
     def _process_object_labels(self, stix_obj):
-        if self.ocd_enrich_add_tags_as_labels:
-            stix_obj["labels"] = utils.curate_labels(stix_obj["labels"])
-        else:
+        if not self.ocd_enrich_add_tags_as_labels:
             stix_obj["labels"] = []
+        elif self.ocd_enrich_curate_labels:
+            stix_obj["labels"] = utils.curate_labels(stix_obj["labels"])
 
     def _process_object_scores(self, stix_obj):
         if "x_datalake_score" in stix_obj and self.ocd_enrich_add_score:
@@ -495,7 +502,7 @@ class OrangeCyberdefenseEnrichment:
                 )
 
         if self.ocd_enrich_add_tags_as_labels:
-            labels = utils.curate_labels(standard_labels)
+            labels = standard_labels
             for label in labels:
                 OpenCTIStix2.put_attribute_in_extension(
                     observable_object,

@@ -90,6 +90,7 @@ Other prerequisites for using this connector includes:
 | `ocd_enrich.add_related`<br/>`OCD_ENRICH_ADD_RELATED`                                     | No        | Whether to import objects from the Threat Library related to this observable, such as indicators, malwares, etc. Full explanation in [this section below](#about-related-entities). Defaults to `true`. |
 | `ocd_enrich.add_sightings`<br/>`OCD_ENRICH_ADD_SIGHTINGS`                                 | No        | Whether to import positive sightings from Datalake. Full explanation in [this section below](#about-sightings). Defaults to `true`. |
 | `ocd_enrich.add_createdby`<br/>`OCD_ENRICH_ADD_CREATEDBY`                                 | No        | Whether to add a reference to "Orange Cyberdefense" organization as author of OpenCTI objects. Defaults to `true`. |
+| `ocd_enrich.curate_labels`<br/>`OCD_ENRICH_CURATE_LABELS`                                 | No        | ⚠️ Advanced setting* - Adapt Datalake CTI tags as STIX labels. Defaults to `true`. |
 | `ocd_enrich.max_tlp`<br/>`OCD_ENRICH_MAX_TLP`                                             | No        | Only perform enrichment for observables with this TLP level or less restrictive. Defaults to `TLP:GREEN`. |
 | `ocd_enrich.threat_actor_as_intrusion_set`<br/>`OCD_ENRICH_THREAT_ACTOR_AS_INTRUSION_SET` | No        | ⚠️ Advanced setting* - Whether to transform Datalake "Threat Actor" objects into "Intrusion Set" objects, which makes more sense in the STIX format and OpenCTI. Defaults to `true`. |
 

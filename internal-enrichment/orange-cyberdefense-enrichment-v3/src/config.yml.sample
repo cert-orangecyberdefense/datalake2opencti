@@ -25,5 +25,6 @@ ocd_enrich:
   add_related: true
   add_sightings: true
   add_createdby: true
+  curate_labels: true
   max_tlp: 'TLP:GREEN'
   threat_actor_as_intrusion_set: true
