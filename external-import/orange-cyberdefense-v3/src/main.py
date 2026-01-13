@@ -209,12 +209,14 @@ class OrangeCyberdefense:
             "OCD_DATALAKE_FALLBACK_SCORE",
             ["ocd", "datalake_fallback_score"],
             config,
+            isNumber=True,
         )
         if self.ocd_datalake_fallback_score is None:
             self.ocd_datalake_fallback_score = get_config_variable(
                 "OCD_FALLBACK_SCORE",
                 ["ocd", "fallback_score"],
                 config,
+                isNumber=True,
             )
             if self.ocd_datalake_fallback_score is not None:
                 self.helper.log_warning(
