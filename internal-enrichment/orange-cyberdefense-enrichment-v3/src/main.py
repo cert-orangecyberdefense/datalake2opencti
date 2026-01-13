@@ -99,6 +99,28 @@ class OrangeCyberdefenseEnrichment:
             default="prod",
         )
 
+        self.ocd_enrich_ignore_unscored_indicators = get_config_variable(
+            "OCD_ENRICH_IGNORE_UNSCORED_INDICATORS",
+            ["ocd_enrich", "ignore_unscored_indicators"],
+            config,
+            default=True,
+        )
+
+        self.ocd_enrich_ignore_whitelisted_indicators = get_config_variable(
+            "OCD_ENRICH_IGNORE_WHITELISTED_INDICATORS",
+            ["ocd_enrich", "ignore_whitelisted_indicators"],
+            config,
+            default=True,
+        )
+
+        self.ocd_enrich_fallback_score = get_config_variable(
+            "OCD_ENRICH_FALLBACK_SCORE",
+            ["ocd_enrich", "fallback_score"],
+            config,
+            isNumber=True,
+            default=0,
+        )
+
         self.ocd_enrich_add_tags_as_labels = get_config_variable(
             "OCD_ENRICH_ADD_TAGS_AS_LABELS",
             ["ocd_enrich", "add_tags_as_labels"],
@@ -166,7 +188,7 @@ class OrangeCyberdefenseEnrichment:
             "OCD_ENRICH_MAX_TLP",
             ["ocd_enrich", "max_tlp"],
             config,
-            default="TLP:AMBER",
+            default="TLP:GREEN",
         )
 
     def _init_variables(self):
@@ -225,6 +247,8 @@ class OrangeCyberdefenseEnrichment:
             scores = list(stix_obj["x_datalake_score"].values())
             if len(scores) > 0:
                 stix_obj["x_opencti_score"] = max(scores)
+            else:
+                stix_obj["x_opencti_score"] = self.ocd_enrich_fallback_score
         if self.ocd_enrich_add_scores_as_labels:
             threat_scores = stix_obj.get("x_datalake_score", {})
             for threat_type, score in threat_scores.items():
@@ -396,7 +420,7 @@ class OrangeCyberdefenseEnrichment:
 
         if not OpenCTIConnectorHelper.check_max_tlp(tlp, self.max_tlp):
             self.helper.log_info(
-                f"Not enriching {value} because {tlp} is higher than"
+                f"Not enriching '{value}' because {tlp} is higher than"
                 f" {self.max_tlp}"
             )
             return
@@ -411,15 +435,32 @@ class OrangeCyberdefenseEnrichment:
             output=Output.STIX,
         )
 
-        if "threat_found" in data:
-            self.helper.log_info(f"No threat found for {value}")
+        if "threat_found" in data and not data["threat_found"]:
+            self.helper.log_info(f"No threat found for '{value}'")
             return
-        self.helper.log_info(f"Match found for {value}")
+        self.helper.log_info(f"Match found for '{value}'")
 
         indicator_object = {}
         related_objects = []
         for stix_obj in data["objects"]:
             if stix_obj["type"] == "indicator":
+                if (
+                    stix_obj.get("x_datalake_whitelist_sources")
+                    and self.ocd_enrich_ignore_whitelisted_indicators
+                ):
+                    self.helper.log_info(
+                        f"Not enriching '{value}' because threat is whitelisted"
+                    )
+                    return
+                if (
+                    self.ocd_enrich_ignore_unscored_indicators
+                    and "x_datalake_score" in stix_obj
+                    and len(stix_obj["x_datalake_score"]) == 0
+                ):
+                    self.helper.log_info(
+                        f"Not enriching '{value}' because threat is unscored"
+                    )
+                    return
                 indicator_object = stix_obj
             processed_object = self._process_object(stix_obj)
             if processed_object is None:
@@ -464,7 +505,10 @@ class OrangeCyberdefenseEnrichment:
                     True,
                 )
 
-        if "external_references" in indicator_object and self.ocd_enrich_add_extref:
+        if (
+            "external_references" in indicator_object
+            and self.ocd_enrich_add_extref
+        ):
             for external_reference in indicator_object["external_references"]:
                 if "url" in external_reference:
                     try:

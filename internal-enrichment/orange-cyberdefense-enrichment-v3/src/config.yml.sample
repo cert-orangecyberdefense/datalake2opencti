@@ -14,6 +14,9 @@ connector:
 ocd_enrich:
   datalake_env: 'prod'
   datalake_token: 'ChangeMe'
+  ignore_unscored_indicators: true
+  ignore_whitelisted_indicators: true
+  fallback_score: 0
   add_tags_as_labels: true
   add_scores_as_labels: true
   add_score: true
@@ -22,5 +25,5 @@ ocd_enrich:
   add_related: true
   add_sightings: true
   add_createdby: true
-  max_tlp: 'TLP:AMBER'
+  max_tlp: 'TLP:GREEN'
   threat_actor_as_intrusion_set: true
