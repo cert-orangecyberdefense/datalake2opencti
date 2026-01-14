@@ -135,6 +135,13 @@ class OrangeCyberdefenseEnrichment:
             default=True,
         )
 
+        self.ocd_enrich_add_tlp = get_config_variable(
+            "OCD_ENRICH_ADD_TLP",
+            ["ocd_enrich", "add_tlp"],
+            config,
+            default=True,
+        )
+
         self.ocd_enrich_threat_actor_as_intrusion_set = get_config_variable(
             "OCD_ENRICH_THREAT_ACTOR_AS_INTRUSION_SET",
             ["ocd_enrich", "threat_actor_as_intrusion_set"],
@@ -188,7 +195,7 @@ class OrangeCyberdefenseEnrichment:
             "OCD_ENRICH_CURATE_LABELS",
             ["ocd_enrich", "curate_labels"],
             config,
-            default=True
+            default=True,
         )
 
         self.max_tlp = get_config_variable(
@@ -206,12 +213,6 @@ class OrangeCyberdefenseEnrichment:
             )
         else:
             self.identity = None
-        self.marking = self.helper.api.marking_definition.create(
-            definition_type="COMMERCIAL",
-            definition="ORANGE CYBERDEFENSE",
-            x_opencti_order=99,
-            x_opencti_color="#ff7900",
-        )
         self.cache = {}
 
     def _init_datalake_instance(self):
@@ -221,27 +222,11 @@ class OrangeCyberdefenseEnrichment:
         )
 
     def _process_object_tlps(self, stix_obj):
-        # if not self.ocd_enrich_datalake_add_tlp:
-        #     return
-        dict_label_to_object_marking_refs = {
-            "tlp:clear": [stix2.TLP_WHITE.get("id")],
-            "tlp:white": [stix2.TLP_WHITE.get("id")],
-            "tlp:green": [stix2.TLP_GREEN.get("id")],
-            "tlp:amber": [
-                stix2.TLP_AMBER.get("id"),
-                self.marking["standard_id"],
-            ],
-            "tlp:amber+strict": [
-                stix2.TLP_AMBER.get("id"),
-                self.marking["standard_id"],
-            ],
-            "tlp:red": [stix2.TLP_RED.get("id"), self.marking["standard_id"]],
-        }
-        for label in stix_obj["labels"]:
-            if label in dict_label_to_object_marking_refs:
-                stix_obj["object_marking_refs"] = (
-                    dict_label_to_object_marking_refs[label]
-                )
+        if not self.ocd_enrich_add_tlp:
+            return
+        tlp = utils.get_tlp_from_tags(stix_obj["labels"])
+        if tlp:
+            stix_obj["object_marking_refs"].append(tlp.get("id"))
 
     def _process_object_labels(self, stix_obj):
         if not self.ocd_enrich_add_tags_as_labels:
@@ -313,6 +298,8 @@ class OrangeCyberdefenseEnrichment:
 
         if "labels" not in stix_obj:
             stix_obj["labels"] = []
+        if "object_marking_refs" not in stix_obj:
+            stix_obj["object_marking_refs"] = []
 
         if not self.ocd_enrich_add_createdby:
             stix_obj.pop("created_by_ref", None)
@@ -408,7 +395,6 @@ class OrangeCyberdefenseEnrichment:
             created=creation_date,
             modified=indicator_object["modified"],
             created_by_ref=indicator_object.get("created_by_ref", None),
-            object_marking_refs=[self.marking["standard_id"]],
             object_refs=[observable_object["id"], indicator_object["id"]],
         )
         return note_stix
@@ -479,8 +465,14 @@ class OrangeCyberdefenseEnrichment:
                 observable_object,
                 STIX_EXT_OCTI_SCO,
                 "score",
-                indicator_object.get("x_opencti_score", None),
+                indicator_object["x_opencti_score"],
             )
+
+        if self.ocd_enrich_add_tlp:
+            for marking in indicator_object["object_marking_refs"]:
+                if "object_marking_refs" not in observable_object:
+                    observable_object["object_marking_refs"] = []
+                observable_object["object_marking_refs"].append(marking)
 
         # Split indicator labels between score related and standard
         score_labels = []
@@ -567,7 +559,6 @@ class OrangeCyberdefenseEnrichment:
                     if self.ocd_enrich_add_createdby
                     else None
                 ),
-                object_marking_refs=[self.marking["standard_id"]],
             )
             stix_objects.append(json.loads(relationship.serialize()))
 

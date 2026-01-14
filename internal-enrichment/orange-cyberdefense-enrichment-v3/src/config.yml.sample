@@ -20,6 +20,7 @@ ocd_enrich:
   add_tags_as_labels: true
   add_scores_as_labels: true
   add_score: true
+  add_tlp: true
   add_extref: true
   add_summary: true
   add_related: true
