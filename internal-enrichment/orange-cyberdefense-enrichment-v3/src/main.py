@@ -206,13 +206,7 @@ class OrangeCyberdefenseEnrichment:
         )
 
     def _init_variables(self):
-        if self.ocd_enrich_add_createdby:
-            self.identity = self.helper.api.identity.create(
-                type="Organization",
-                name="Orange Cyberdefense",
-            )
-        else:
-            self.identity = None
+        self.identity = None
         self.cache = {}
 
     def _init_datalake_instance(self):
@@ -436,9 +430,10 @@ class OrangeCyberdefenseEnrichment:
         indicator_object = {}
         related_objects = []
         for stix_obj in data["objects"]:
-            if stix_obj["type"] == "indicator":
+            processed_object = self._process_object(stix_obj)
+            if processed_object["type"] == "indicator":
                 if (
-                    stix_obj.get("x_datalake_whitelist_sources")
+                    processed_object.get("x_datalake_whitelist_sources")
                     and self.ocd_enrich_ignore_whitelisted_indicators
                 ):
                     self.helper.log_info(
@@ -447,15 +442,21 @@ class OrangeCyberdefenseEnrichment:
                     return
                 if (
                     self.ocd_enrich_ignore_unscored_indicators
-                    and "x_datalake_score" in stix_obj
-                    and len(stix_obj["x_datalake_score"]) == 0
+                    and "x_datalake_score" in processed_object
+                    and len(processed_object["x_datalake_score"]) == 0
                 ):
                     self.helper.log_info(
                         f"Not enriching '{value}' because threat is unscored"
                     )
                     return
-                indicator_object = stix_obj
-            processed_object = self._process_object(stix_obj)
+                indicator_object = processed_object
+            if (
+                self.ocd_enrich_add_createdby
+                and processed_object["type"] == "identity"
+                and processed_object["identity_class"] == "organization"
+                and processed_object["name"] == "Orange Cyberdefense"
+            ):
+                self.identity = processed_object # pylint: disable=W0201
             if processed_object is None:
                 continue
             related_objects.append(processed_object)
@@ -555,12 +556,15 @@ class OrangeCyberdefenseEnrichment:
                 source_ref=indicator_object["id"],
                 target_ref=observable_object["id"],
                 created_by_ref=(
-                    self.identity["standard_id"]
+                    self.identity["id"]
                     if self.ocd_enrich_add_createdby
                     else None
                 ),
             )
             stix_objects.append(json.loads(relationship.serialize()))
+
+        if self.identity and not self.ocd_enrich_add_related:
+            stix_objects.append(self.identity)
 
         serialized_bundle = self.helper.stix2_create_bundle(stix_objects)
         self.helper.send_stix2_bundle(serialized_bundle)
