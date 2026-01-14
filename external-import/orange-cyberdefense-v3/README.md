@@ -61,13 +61,14 @@ Other prerequisites for using this connector includes:
 ### Installation
 
 1. Copy the content under the `services:` section of the `docker-compose.yml` example file into your main OpenCTI docker configuration.
-2. Replace the value of `OPENCTI_TOKEN` with the token of the dedicated OpenCTI user you created for this integration (see [prerequisites](#prerequisites)).
-3. Replace the value of `CONNECTOR_ID` with a randomly generated UUIDv4 (you can find UUID generators online).
-4. Replace the value of `OCD_IMPORT_DATALAKE`, `OCD_IMPORT_THREAT_LIBRARY` and `OCD_IMPORT_WORLDWATCH` to enable the modules you want. Each one of these import types are detailed below.
-5. If required by enabled modules, replace the value of `OCD_DATALAKE_TOKEN` with your Datalake API token. The account must have the Datalake `bulk_search` permission.
-6. If required by enabled modules, replace the value of `OCD_WORLDWATCH_TOKEN` with your Datalake API token.
-7. Replace or add other variables to customize the behavior of this connector according to your needs. See [this section below](#environment-variables) for a full list of supported environment variable.
-8. Reload the connector's container configuration. If using Docker compose, this can be done using the `docker compose up -d` command.
+2. Replace the value of `OPENCTI_URL` with the OpenCTI container URL, usually `http://opencti:8080`.
+3. Replace the value of `OPENCTI_TOKEN` with the token of the dedicated OpenCTI user you created for this integration (see [prerequisites](#prerequisites)).
+4. Replace the value of `CONNECTOR_ID` with a randomly generated UUIDv4 (you can find UUID generators online).
+5. Replace the value of `OCD_IMPORT_DATALAKE`, `OCD_IMPORT_THREAT_LIBRARY` and `OCD_IMPORT_WORLDWATCH` to enable the modules you want. Each one of these import types are detailed below.
+6. If required by enabled modules, replace the value of `OCD_DATALAKE_TOKEN` with your Datalake API token. The account must have the Datalake `bulk_search` permission.
+7. If required by enabled modules, replace the value of `OCD_WORLDWATCH_TOKEN` with your Datalake API token.
+8. Replace or add other variables to customize the behavior of this connector according to your needs. See [this section below](#environment-variables) for a full list of supported environment variable.
+9. Reload the connector's container configuration. If using Docker compose, this can be done using the `docker compose up -d` command.
 
 ### Troubleshooting
 
