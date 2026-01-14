@@ -1,8 +1,32 @@
 from typing import Iterable, TypeVar
 
+import pycti
+import stix2
 from datalake import AtomType
 
+# Constants
+
 T = TypeVar("T")
+
+TLP_MAPPINGS = {
+    "TLP:CLEAR": stix2.TLP_WHITE,
+    "TLP:WHITE": stix2.TLP_WHITE,
+    "TLP:GREEN": stix2.TLP_GREEN,
+    "TLP:AMBER": stix2.TLP_AMBER,
+    "TLP:AMBER+STRICT": stix2.MarkingDefinition(
+        id=pycti.MarkingDefinition.generate_id("TLP", "TLP:AMBER+STRICT"),
+        name="TLP:AMBER+STRICT",
+        definition_type="statement",
+        definition={"statement": "custom"},
+        custom_properties={
+            "x_opencti_definition_type": "TLP",
+            "x_opencti_definition": "TLP:AMBER+STRICT",
+        },
+    ),
+    "TLP:RED": stix2.TLP_RED,
+}
+
+# Functions
 
 
 def keep_first(iterable: Iterable[T], key=None):
@@ -114,3 +138,31 @@ def curate_labels(labels):
         if label is not None and len(label) > 0
     ]
     return curated_labels
+
+
+def get_less_restrictive_tlp(tlp_a, tlp_b):
+    """Return the less restrictive TLP marking between the two provided."""
+    if tlp_a is None:
+        return tlp_b
+    if tlp_b is None:
+        return tlp_a
+    mapping_indices = list(TLP_MAPPINGS.keys())
+    if mapping_indices.index(tlp_a["name"]) <= mapping_indices.index(
+        tlp_b["name"]
+    ):
+        return tlp_a
+    return tlp_b
+
+
+def get_tlp_from_tags(labels):
+    """Return a marking definition corresponding to the TLP from labels."""
+    tlp = None
+    for label in labels:
+        label = label.upper()
+        if (
+            label in TLP_MAPPINGS
+            and get_less_restrictive_tlp(tlp, TLP_MAPPINGS[label])
+            == TLP_MAPPINGS[label]
+        ):
+            tlp = TLP_MAPPINGS[label]
+    return tlp
