@@ -1138,7 +1138,7 @@ class OrangeCyberdefense:
         )
 
         batch_objects = []
-        batch_size = 50
+        batch_size = 10
         latest_timestamp = None
 
         for content_block in content_block_list:
