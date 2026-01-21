@@ -25,6 +25,6 @@ You may use one or both depending on your use case. Click on the links above to 
 _We always recommend people to use the official OpenCTI connector images, but in some cases it might be useful to build public "beta" images without waiting for the pull request to be merged on the OpenCTI side. This can be done using Github Action workflows._
 
 1. Check that the required Github secrets and variables exists and have the right values.
-2. Go to the [GitHub Actions workflows](./actions) menu. Click on the workflow you wish to run.
+2. Go to the Actions page on this GitHub repository. Click on the workflow you wish to run.
 3. Please use tags such as `<current-opencti-version>-beta` when running the workflows.
 4. Go to the relevant Docker Hub pages, and look for the newly created image: [datalake2opencti-external-import](https://hub.docker.com/r/ocddev/datalake2opencti-external-import) or [datalake2opencti-internal-enrichment](https://hub.docker.com/r/ocddev/datalake2opencti-internal-enrichment)
