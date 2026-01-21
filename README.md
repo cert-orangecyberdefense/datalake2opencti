@@ -1,4 +1,4 @@
-# CERT Orange Cyberdefense integrations for OpenCTI
+# CERT Orange Cyberdefense connectors for OpenCTI
 
 This repository is a fork of the official [OpenCTI connectors repository](https://github.com/OpenCTI-Platform/connectors).
 
