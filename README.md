@@ -9,8 +9,8 @@ This repository is a fork of the official [OpenCTI connectors repository](https:
 ## Connectors
 
 We maintain code provide support for the following two connectors:
-- The first one, [orange-cyberdefense-v3](https://github.com/cert-orangecyberdefense/datalake2opencti/tree/external-import-release/external-import/orange-cyberdefense-v3), allows you to import Datalake and World Watch threat intelligence into OpenCTI.
-- The second one, [orange-cyberdefense-enrichment-v3](https://github.com/cert-orangecyberdefense/datalake2opencti/tree/internal-enrichment-release/internal-enrichment/orange-cyberdefense-enrichment-v3), allows you to enrich OpenCTI observables with Datalake threat intelligence.
+- The first one, [orange-cyberdefense-v3](https://github.com/OpenCTI-Platform/connectors/tree/master/external-import/orange-cyberdefense-v3) (external-import), allows you to import Datalake and World Watch threat intelligence into OpenCTI.
+- The second one, [orange-cyberdefense-enrichment-v3](https://github.com/OpenCTI-Platform/connectors/tree/master/internal-enrichment/orange-cyberdefense-enrichment-v3) (internal-enrichment), allows you to enrich OpenCTI observables with Datalake threat intelligence.
 
 You may use one or both depending on your use case. Click on the links above to learn how to install it.
 
