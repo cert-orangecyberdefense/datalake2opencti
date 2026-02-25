@@ -90,7 +90,7 @@ class OrangeCyberdefense:
             **config.get("connector", {}),
         }
         config["connector"]["type"] = "EXTERNAL_IMPORT"
-        config["connector"]["scope"] = "ocd"
+        config["connector"]["scope"] = "Orange-Cyberdefense"
         self.helper = OpenCTIConnectorHelper(config)
 
         # OCD_IMPORT_DATALAKE
