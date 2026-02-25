@@ -834,8 +834,8 @@ class OrangeCyberdefense:
                     if (
                         self.ocd_datalake_add_createdby
                         and stix_object["type"] == "identity"
-                        and stix_object["identity_class"] == "organization"
-                        and stix_object["name"] == "Orange Cyberdefense"
+                        and stix_object.get("identity_class", None) == "organization"
+                        and stix_object.get("name", None) == "Orange Cyberdefense"
                     ):
                         objects.append(self._process_object(stix_object))
                     if "labels" not in stix_object:
@@ -1256,8 +1256,8 @@ class OrangeCyberdefense:
             elif (
                 self.ocd_datalake_add_createdby
                 and processed_object["type"] == "identity"
-                and processed_object["identity_class"] == "organization"
-                and processed_object["name"] == "Orange Cyberdefense"
+                and processed_object.get("identity_class", None) == "organization"
+                and processed_object.get("name", None) == "Orange Cyberdefense"
             ):
                 objects.append(processed_object)
             elif self.ocd_datalake_add_related:
